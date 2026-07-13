@@ -103,3 +103,54 @@ def config_show() -> None:
     except Exception as e:
         click.echo(f"Error reading configuration: {e}", err=True)
 
+
+@main.command(name="download-model")
+@click.option(
+    "--engine",
+    "-e",
+    type=click.Choice(["vosk", "whisper"]),
+    default="vosk",
+    help="Target STT engine.",
+)
+@click.option(
+    "--lang",
+    "-l",
+    default="en",
+    help="Language code (BCP-47) for default mapping.",
+)
+@click.option(
+    "--size",
+    "-s",
+    type=click.Choice(["small", "large"]),
+    default="small",
+    help="Model size for default mapping.",
+)
+@click.option(
+    "--model",
+    "-m",
+    default=None,
+    help="Explicit model name override.",
+)
+def download_model(
+    engine: str, lang: str, size: str, model: str | None
+) -> None:
+    """Download local speech-to-text models."""
+    model_id = model if model else f"{lang}-{size}".lower()
+
+    if engine == "vosk":
+        try:
+            from taskify.stt import download_vosk_model
+
+            path = download_vosk_model(model_id)
+            click.echo(f"Vosk model ready at: {path}")
+        except Exception as e:
+            click.echo(f"Error downloading Vosk model: {e}", err=True)
+            raise click.Abort() from e
+    elif engine == "whisper":
+        click.echo(
+            "Whisper engine is not yet implemented. Cannot download Whisper models.",
+            err=True,
+        )
+        raise click.Abort()
+
+
