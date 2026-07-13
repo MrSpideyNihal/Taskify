@@ -1,0 +1,26 @@
+[audio]
+device = "default"
+sample_rate = 16000
+chunk_duration_ms = 200
+silence_threshold = 0.01
+silence_duration_s = 1.5
+
+[stt]
+engine = "vosk"
+vosk_model = "en-small"
+whisper_model = "base"
+language = "en"
+
+[llm]
+backend = "ollama"
+ollama_host = "http://localhost:11434"
+ollama_model = "phi4-mini"
+extraction_interval_s = 300
+
+[storage]
+data_dir = ""
+log_dir = ""
+
+[logging]
+level = "INFO"
+debug_llm = false
