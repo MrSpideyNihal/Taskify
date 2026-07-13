@@ -1,0 +1,1 @@
+"""SQL schema migrations package."""
