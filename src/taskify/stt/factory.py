@@ -3,6 +3,7 @@
 from taskify.config import Settings
 from taskify.stt.base import STTEngine
 from taskify.stt.vosk_engine import VoskEngine
+from taskify.stt.whisper_engine import WhisperEngine
 
 
 def get_stt_engine(settings: Settings) -> STTEngine:
@@ -22,10 +23,6 @@ def get_stt_engine(settings: Settings) -> STTEngine:
     if engine_choice == "vosk":
         return VoskEngine(settings)
     elif engine_choice == "whisper":
-        # Whisper implementation is scheduled for Issue #6.
-        # Lazily import or raise error here.
-        raise NotImplementedError(
-            "Whisper STT engine is not yet implemented. Use 'vosk' instead."
-        )
+        return WhisperEngine(settings)
     else:
         raise ValueError(f"Unknown speech-to-text engine: {settings.stt.engine}")
