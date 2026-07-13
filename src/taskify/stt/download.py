@@ -97,3 +97,56 @@ def download_vosk_model(model_name: str) -> Path:
         raise RuntimeError(
             f"Failed to install speech model '{model_name}': {e}"
         ) from e
+
+
+def download_whisper_model(model_size: str) -> Path:
+    """Download and prepare faster-whisper speech model in local directory.
+
+    Args:
+        model_size (str): Target model size (tiny, base, small).
+
+    Returns:
+        Path: Target local model folder directory.
+
+    Raises:
+        ValueError: If model size is invalid.
+        RuntimeError: If download fails.
+    """
+    valid_sizes = ("tiny", "base", "small")
+    if model_size not in valid_sizes:
+        raise ValueError(
+            f"Whisper model size '{model_size}' is not supported. "
+            f"Choose one of: {valid_sizes}"
+        )
+
+    _, data_dir = get_default_paths()
+    download_root = data_dir / "models" / "whisper"
+    download_root.mkdir(parents=True, exist_ok=True)
+
+    click.echo(
+        f"Downloading Whisper '{model_size}' model to: {download_root}..."
+    )
+    click.echo("This will pull quantized weights from Hugging Face.")
+
+    try:
+        from faster_whisper import WhisperModel
+
+        # Instantiate model; this downloads model files if missing
+        WhisperModel(
+            model_size,
+            device="cpu",
+            compute_type="int8",
+            download_root=str(download_root),
+        )
+
+        target_model_path = (
+            download_root
+            / f"models--Systran--faster-whisper-{model_size}"
+        )
+        click.echo("Whisper model download and check completed successfully.")
+        return target_model_path
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to download Whisper model '{model_size}': {e}"
+        ) from e
+

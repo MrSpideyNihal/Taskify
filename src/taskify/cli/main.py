@@ -147,10 +147,14 @@ def download_model(
             click.echo(f"Error downloading Vosk model: {e}", err=True)
             raise click.Abort() from e
     elif engine == "whisper":
-        click.echo(
-            "Whisper engine is not yet implemented. Cannot download Whisper models.",
-            err=True,
-        )
-        raise click.Abort()
+        try:
+            from taskify.stt import download_whisper_model
+
+            size_val = model if model else size
+            path = download_whisper_model(size_val)
+            click.echo(f"Whisper model ready at: {path}")
+        except Exception as e:
+            click.echo(f"Error downloading Whisper model: {e}", err=True)
+            raise click.Abort() from e
 
 

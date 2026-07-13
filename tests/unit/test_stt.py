@@ -54,10 +54,12 @@ def test_stt_engine_factory(dummy_settings: Settings) -> None:
     engine = get_stt_engine(dummy_settings)
     assert isinstance(engine, VoskEngine)
 
-    # Test whisper (throws NotImplementedError)
+    # Test whisper now returns WhisperEngine
+    from taskify.stt import WhisperEngine
+
     dummy_settings.stt.engine = "whisper"
-    with pytest.raises(NotImplementedError, match="Whisper STT engine"):
-        get_stt_engine(dummy_settings)
+    whisper_engine = get_stt_engine(dummy_settings)
+    assert isinstance(whisper_engine, WhisperEngine)
 
     # Test unknown engine selection
     dummy_settings.stt.engine = "unsupported"
