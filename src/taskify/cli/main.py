@@ -1,6 +1,7 @@
 """Command Line Interface for Taskify."""
 
 import click
+
 from taskify import __version__
 
 
