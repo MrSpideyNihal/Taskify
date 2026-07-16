@@ -7,9 +7,11 @@ from taskify.storage.models import (
     TaskRecord,
     TranscriptSegment,
 )
+from taskify.storage.transcript_writer import TranscriptWriter
 
 __all__ = [
     "DatabaseManager",
+    "TranscriptWriter",
     "SessionRecord",
     "TranscriptSegment",
     "TaskRecord",
