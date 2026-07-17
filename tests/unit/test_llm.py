@@ -262,10 +262,12 @@ class TestLLMFactory:
             backend = get_llm_backend(dummy_settings)
         assert isinstance(backend, OllamaBackend)
 
-    def test_nlp_raises_not_implemented(self, dummy_settings: Settings) -> None:
+    def test_nlp_backend_returns_nlp_instance(self, dummy_settings: Settings) -> None:
+        from taskify.llm import NLPBackend
+
         dummy_settings.llm.backend = "nlp"
-        with pytest.raises(NotImplementedError, match="NLP backend"):
-            get_llm_backend(dummy_settings)
+        backend = get_llm_backend(dummy_settings)
+        assert isinstance(backend, NLPBackend)
 
     def test_unknown_backend_raises_value_error(
         self, dummy_settings: Settings

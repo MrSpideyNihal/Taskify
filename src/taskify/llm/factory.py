@@ -4,6 +4,7 @@ import logging
 
 from taskify.config import Settings
 from taskify.llm.base import LLMBackend
+from taskify.llm.nlp_backend import NLPBackend
 from taskify.llm.ollama_backend import OllamaBackend
 
 logger = logging.getLogger(__name__)
@@ -13,8 +14,8 @@ def get_llm_backend(settings: Settings) -> LLMBackend:
     """Instantiate and return the configured LLM backend.
 
     If the primary backend is ``"ollama"`` but the Ollama service is
-    unreachable, logs a warning and falls back to the NLP backend
-    (implemented in Issue #9).
+    unreachable, logs a warning and returns the :class:`NLPBackend`
+    as a transparent fallback.
 
     Args:
         settings (Settings): Application configuration.
@@ -35,16 +36,11 @@ def get_llm_backend(settings: Settings) -> LLMBackend:
                 "Falling back to NLP backend.",
                 settings.llm.ollama_host,
             )
-            # NLP backend will be imported here once Issue #9 is implemented.
-            # For now, return the (unavailable) Ollama instance so callers
-            # can detect the outage via is_available and handle accordingly.
+            return NLPBackend()
         return backend
 
     if backend_name == "nlp":
-        # NLP/spaCy backend: implemented in Issue #9.
-        raise NotImplementedError(
-            "NLP backend is not yet implemented. Set llm.backend = 'ollama'."
-        )
+        return NLPBackend()
 
     raise ValueError(
         f"Unknown LLM backend '{settings.llm.backend}'. "
