@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import tkinter as tk
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -12,7 +13,13 @@ import customtkinter as ctk
 from taskify.llm.models import MatrixQuadrant
 from taskify.pipeline.scheduler import EVENT_TASKS_UPDATED
 
+try:
+    from taskify.audio.capture import AudioCapture
+except Exception:  # portaudio may be missing in CI / headless envs
+    AudioCapture = None  # type: ignore[assignment,misc]
+
 if TYPE_CHECKING:
+    from taskify.audio.capture import AudioCapture
     from taskify.config import Settings
     from taskify.pipeline.scheduler import EventBus
     from taskify.storage.database import DatabaseManager
@@ -33,6 +40,15 @@ COLOR_DO_FIRST = "#FF5F5F"  # Vibrant Coral Red
 COLOR_SCHEDULE = "#5F9FFF"  # Clean Sky Blue
 COLOR_DELEGATE = "#FFBF5F"  # Warm Orange/Amber
 COLOR_ELIMINATE = "#8A8A93"  # Muted Slate Gray
+
+# Recording state colors
+COLOR_RECORDING = "#FF4040"
+COLOR_IDLE = "#4ADE80"
+
+# Live transcript max chars
+_TRANSCRIPT_MAX_CHARS = 500
+# Audio level poll interval (ms)
+_LEVEL_POLL_MS = 100
 
 
 class TaskCard(ctk.CTkFrame):
@@ -227,14 +243,25 @@ class MainWindow(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
-        # Responsive main grid layout configuration
+        # Responsive main grid layout: control panel col + matrix col
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=0)  # Status Bar
-        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=0)  # Control sidebar
+        self.grid_columnconfigure(1, weight=1)  # Quadrant matrix
+
+        # Recording state
+        self._is_recording = False
+        self._session_start: float | None = None
+        self._timer_after_id: str | None = None
+        self._level_after_id: str | None = None
+        self._audio_capture: AudioCapture | None = None
+
+        # Build control sidebar
+        self._create_control_panel()
 
         # Container for the 2x2 quadrant layout
         self.matrix_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.matrix_frame.grid(row=0, column=0, padx=16, pady=16, sticky="nsew")
+        self.matrix_frame.grid(row=0, column=1, padx=16, pady=16, sticky="nsew")
 
         self.matrix_frame.grid_rowconfigure(0, weight=1)
         self.matrix_frame.grid_rowconfigure(1, weight=1)
@@ -276,7 +303,7 @@ class MainWindow(ctk.CTk):
             MatrixQuadrant.ELIMINATE.value,
         )
 
-        # Create Status Bar
+        # Create Status Bar (spans both columns)
         self._create_status_bar()
 
         # Initial data loading
@@ -284,6 +311,251 @@ class MainWindow(ctk.CTk):
 
         # Wire EventBus triggers thread-safely
         self._bus.subscribe(EVENT_TASKS_UPDATED, self._on_tasks_updated)
+
+    # ------------------------------------------------------------------
+    # Control panel
+    # ------------------------------------------------------------------
+
+    def _create_control_panel(self) -> None:
+        """Build the left-hand recording control sidebar."""
+        panel = ctk.CTkFrame(
+            self,
+            width=240,
+            fg_color=CARD_BG,
+            border_color=BORDER_COLOR,
+            border_width=1,
+            corner_radius=0,
+        )
+        panel.grid(row=0, column=0, sticky="nsew")
+        panel.grid_propagate(False)
+        panel.grid_columnconfigure(0, weight=1)
+
+        # ---- App title / branding ----
+        brand = ctk.CTkLabel(
+            panel,
+            text="TASKIFY",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color=TEXT_PRIMARY,
+        )
+        brand.grid(row=0, column=0, padx=20, pady=(20, 4), sticky="w")
+
+        subtitle = ctk.CTkLabel(
+            panel,
+            text="Voice Task Manager",
+            font=ctk.CTkFont(size=11),
+            text_color=TEXT_SECONDARY,
+        )
+        subtitle.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="w")
+
+        # Separator line
+        sep1 = ctk.CTkFrame(
+            panel, height=1, fg_color=BORDER_COLOR, corner_radius=0
+        )
+        sep1.grid(row=2, column=0, padx=12, pady=(0, 16), sticky="ew")
+
+        # ---- Recording button ----
+        self.record_btn = ctk.CTkButton(
+            panel,
+            text="▶  Start Recording",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            fg_color=COLOR_IDLE,
+            hover_color="#22C55E",
+            text_color="#000000",
+            corner_radius=8,
+            height=42,
+            command=self.toggle_recording,
+        )
+        self.record_btn.grid(row=3, column=0, padx=16, pady=(0, 12), sticky="ew")
+
+        # ---- Session Timer ----
+        timer_frame = ctk.CTkFrame(panel, fg_color="transparent")
+        timer_frame.grid(row=4, column=0, padx=16, pady=(0, 4), sticky="ew")
+
+        ctk.CTkLabel(
+            timer_frame,
+            text="Session",
+            font=ctk.CTkFont(size=11),
+            text_color=TEXT_SECONDARY,
+        ).pack(side="left")
+
+        self.timer_label = ctk.CTkLabel(
+            timer_frame,
+            text="00:00",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=TEXT_PRIMARY,
+        )
+        self.timer_label.pack(side="right")
+
+        # ---- Audio level bar ----
+        level_lbl = ctk.CTkLabel(
+            panel,
+            text="Audio Level",
+            font=ctk.CTkFont(size=11),
+            text_color=TEXT_SECONDARY,
+            anchor="w",
+        )
+        level_lbl.grid(row=5, column=0, padx=16, pady=(8, 2), sticky="w")
+
+        self.level_bar = ctk.CTkProgressBar(
+            panel,
+            orientation="horizontal",
+            height=8,
+            progress_color=COLOR_IDLE,
+            fg_color=BORDER_COLOR,
+        )
+        self.level_bar.set(0)
+        self.level_bar.grid(row=6, column=0, padx=16, pady=(0, 12), sticky="ew")
+
+        # ---- Live transcript box ----
+        tx_lbl = ctk.CTkLabel(
+            panel,
+            text="Live Transcript",
+            font=ctk.CTkFont(size=11),
+            text_color=TEXT_SECONDARY,
+            anchor="w",
+        )
+        tx_lbl.grid(row=7, column=0, padx=16, pady=(4, 2), sticky="w")
+
+        self.transcript_box = ctk.CTkTextbox(
+            panel,
+            font=ctk.CTkFont(size=11),
+            text_color=TEXT_PRIMARY,
+            fg_color="#0D0D10",
+            border_color=BORDER_COLOR,
+            border_width=1,
+            corner_radius=6,
+            wrap="word",
+            state="disabled",
+        )
+        self.transcript_box.grid(
+            row=8, column=0, padx=12, pady=(0, 16), sticky="nsew"
+        )
+        panel.grid_rowconfigure(8, weight=1)
+
+    # ------------------------------------------------------------------
+    # Recording toggle & session timer
+    # ------------------------------------------------------------------
+
+    def toggle_recording(self) -> None:
+        """Start or stop recording; update button and status label accordingly."""
+        if self._is_recording:
+            self._stop_recording()
+        else:
+            self._start_recording()
+
+    def _start_recording(self) -> None:
+        """Open AudioCapture stream and begin session timer."""
+        try:
+            if AudioCapture is None:
+                raise RuntimeError("AudioCapture unavailable (portaudio missing?)")
+            self._audio_capture = AudioCapture(self._settings)
+            self._audio_capture.start()
+        except Exception as exc:
+            logger.error("Failed to start audio capture: %s", exc)
+            self._audio_capture = None
+
+        self._is_recording = True
+        self._session_start = time.monotonic()
+
+        # Update UI
+        self.record_btn.configure(
+            text="■  Stop Recording",
+            fg_color=COLOR_RECORDING,
+            hover_color="#CC2222",
+            text_color="#FFFFFF",
+        )
+        self.state_label.configure(text="● Recording", text_color=COLOR_RECORDING)
+        self.level_bar.configure(progress_color=COLOR_RECORDING)
+
+        # Begin tick loops
+        self._tick_timer()
+        self._poll_level()
+
+    def _stop_recording(self) -> None:
+        """Close AudioCapture stream and cancel timer."""
+        self._is_recording = False
+
+        if self._audio_capture is not None:
+            try:
+                self._audio_capture.stop()
+            except Exception as exc:
+                logger.error("Error stopping audio capture: %s", exc)
+            self._audio_capture = None
+
+        # Cancel pending after-callbacks
+        if self._timer_after_id is not None:
+            try:
+                self.after_cancel(self._timer_after_id)
+            except Exception:
+                pass
+            self._timer_after_id = None
+
+        if self._level_after_id is not None:
+            try:
+                self.after_cancel(self._level_after_id)
+            except Exception:
+                pass
+            self._level_after_id = None
+
+        # Reset UI
+        self.record_btn.configure(
+            text="▶  Start Recording",
+            fg_color=COLOR_IDLE,
+            hover_color="#22C55E",
+            text_color="#000000",
+        )
+        self.state_label.configure(text="● Idle", text_color=TEXT_SECONDARY)
+        self.level_bar.configure(progress_color=COLOR_IDLE)
+        self.level_bar.set(0)
+        self._session_start = None
+        self.timer_label.configure(text="00:00")
+
+    def _tick_timer(self) -> None:
+        """Update session MM:SS timer every second while recording."""
+        if not self._is_recording or self._session_start is None:
+            return
+
+        elapsed = int(time.monotonic() - self._session_start)
+        minutes, seconds = divmod(elapsed, 60)
+        self.timer_label.configure(text=f"{minutes:02d}:{seconds:02d}")
+        self._timer_after_id = self.after(1000, self._tick_timer)
+
+    def _poll_level(self) -> None:
+        """Read latest RMS from AudioCapture at 10 Hz and update progress bar."""
+        if not self._is_recording:
+            return
+
+        if self._audio_capture is not None:
+            rms = self._audio_capture.latest_rms
+            # Normalise: typical speech RMS ≈ 0.02–0.15; cap at 0.3
+            normalised = min(rms / 0.3, 1.0)
+            self.level_bar.set(normalised)
+
+        self._level_after_id = self.after(_LEVEL_POLL_MS, self._poll_level)
+
+    # ------------------------------------------------------------------
+    # Live transcript
+    # ------------------------------------------------------------------
+
+    def append_transcript(self, text: str) -> None:
+        """Append recognized text to the live transcript pane thread-safely.
+
+        Truncates to the last ``_TRANSCRIPT_MAX_CHARS`` characters so the box
+        never grows unbounded.  Must be called from the GUI thread; use
+        ``self.after(0, ...)`` when calling from a background thread.
+
+        Args:
+            text (str): Newly recognized speech text.
+        """
+        self.transcript_box.configure(state="normal")
+        current = self.transcript_box.get("1.0", "end")
+        combined = (current + " " + text).strip()
+        if len(combined) > _TRANSCRIPT_MAX_CHARS:
+            combined = combined[-_TRANSCRIPT_MAX_CHARS:]
+        self.transcript_box.delete("1.0", "end")
+        self.transcript_box.insert("end", combined)
+        self.transcript_box.see("end")
+        self.transcript_box.configure(state="disabled")
 
     def _create_quadrant(
         self,
@@ -345,7 +617,7 @@ class MainWindow(ctk.CTk):
         self.quadrants[quadrant_key] = scroll_frame
 
     def _create_status_bar(self) -> None:
-        """Construct the application status bar frame."""
+        """Construct the application status bar frame (spans both columns)."""
         self.status_bar = ctk.CTkFrame(
             self,
             height=32,
@@ -354,7 +626,7 @@ class MainWindow(ctk.CTk):
             border_width=1,
             corner_radius=0,
         )
-        self.status_bar.grid(row=1, column=0, sticky="ew")
+        self.status_bar.grid(row=1, column=0, columnspan=2, sticky="ew")
 
         # Left: STT Engine & Model details
         if self._settings.stt.engine == "vosk":

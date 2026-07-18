@@ -1,88 +1,9 @@
-"""Unit tests for the MainWindow GUI dashboard component using a mock GUI module."""
+"""Unit tests for the MainWindow GUI dashboard component."""
 
 from __future__ import annotations
 
-import sys
+# customtkinter is stubbed by tests/unit/conftest.py
 from unittest.mock import MagicMock, patch
-
-# Create dummy classes to prevent Tkinter window rendering or unittest.mock spec conflicts
-class CTkDummy:
-    def __init__(self, *args, **kwargs) -> None:
-        pass
-    def title(self, *args, **kwargs) -> None:
-        pass
-    def geometry(self, *args, **kwargs) -> None:
-        pass
-    def minsize(self, *args, **kwargs) -> None:
-        pass
-    def configure(self, *args, **kwargs) -> None:
-        pass
-    def grid_rowconfigure(self, *args, **kwargs) -> None:
-        pass
-    def grid_columnconfigure(self, *args, **kwargs) -> None:
-        pass
-    def after(self, *args, **kwargs) -> None:
-        pass
-    def destroy(self, *args, **kwargs) -> None:
-        pass
-
-class CTkFrameDummy:
-    def __init__(self, *args, **kwargs) -> None:
-        pass
-    def grid(self, *args, **kwargs) -> None:
-        pass
-    def pack(self, *args, **kwargs) -> None:
-        pass
-    def configure(self, *args, **kwargs) -> None:
-        pass
-    def bind(self, *args, **kwargs) -> None:
-        pass
-    def winfo_children(self) -> list:
-        return []
-    def grid_rowconfigure(self, *args, **kwargs) -> None:
-        pass
-    def grid_columnconfigure(self, *args, **kwargs) -> None:
-        pass
-
-class CTkLabelDummy:
-    def __init__(self, *args, **kwargs) -> None:
-        pass
-    def grid(self, *args, **kwargs) -> None:
-        pass
-    def pack(self, *args, **kwargs) -> None:
-        pass
-    def configure(self, *args, **kwargs) -> None:
-        pass
-    def bind(self, *args, **kwargs) -> None:
-        pass
-
-class CTkScrollableFrameDummy:
-    def __init__(self, *args, **kwargs) -> None:
-        pass
-    def grid(self, *args, **kwargs) -> None:
-        pass
-    def bind(self, *args, **kwargs) -> None:
-        pass
-    def winfo_children(self) -> list:
-        return []
-    def grid_columnconfigure(self, *args, **kwargs) -> None:
-        pass
-
-class CTkFontDummy:
-    def __init__(self, *args, **kwargs) -> None:
-        pass
-
-# Mock the entire customtkinter module before any imports of main_window
-mock_ctk = MagicMock()
-mock_ctk.CTk = CTkDummy
-mock_ctk.CTkFrame = CTkFrameDummy
-mock_ctk.CTkLabel = CTkLabelDummy
-mock_ctk.CTkScrollableFrame = CTkScrollableFrameDummy
-mock_ctk.CTkFont = CTkFontDummy
-mock_ctk.set_appearance_mode = MagicMock()
-mock_ctk.set_default_color_theme = MagicMock()
-
-sys.modules["customtkinter"] = mock_ctk
 
 import pytest
 
