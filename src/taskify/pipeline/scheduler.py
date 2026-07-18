@@ -40,6 +40,8 @@ logger = logging.getLogger(__name__)
 
 # Event name emitted when new tasks are extracted and persisted
 EVENT_TASKS_UPDATED = "tasks_updated"
+# Event name emitted when configuration settings are updated
+EVENT_SETTINGS_UPDATED = "settings_updated"
 
 
 class EventBus:
@@ -138,6 +140,9 @@ class ExtractionScheduler:
         self._running_lock = threading.Lock()
         self._timer: threading.Timer | None = None
         self._started = False
+
+        # Subscribe to settings updates to allow live reload of extraction interval
+        self._bus.subscribe(EVENT_SETTINGS_UPDATED, self._on_settings_updated)
 
     # ------------------------------------------------------------------
     # Public API
@@ -274,3 +279,14 @@ class ExtractionScheduler:
                 EVENT_TASKS_UPDATED,
                 {"extracted": extracted_count, "segments": len(processed_ids)},
             )
+
+    def _on_settings_updated(self, data: object) -> None:
+        """Handle settings change event to dynamically update scheduler interval."""
+        old_interval = self._interval_s
+        self._interval_s = float(self._settings.llm.extraction_interval_s)
+        logger.info(
+            "ExtractionScheduler: updated interval from %.0fs to %.0fs "
+            "based on settings change.",
+            old_interval,
+            self._interval_s,
+        )

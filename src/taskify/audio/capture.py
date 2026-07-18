@@ -48,6 +48,7 @@ class AudioCapture:
         self._queue: queue.Queue[np.ndarray] = queue.Queue()
         self._stream: sd.InputStream | None = None
         self._is_recording = False
+        self._latest_rms = 0.0
 
     @property
     def is_recording(self) -> bool:
@@ -57,6 +58,15 @@ class AudioCapture:
             bool: True if recording.
         """
         return self._is_recording
+
+    @property
+    def latest_rms(self) -> float:
+        """Get the latest calculated Root Mean Square (RMS) audio level.
+
+        Returns:
+            float: RMS value.
+        """
+        return self._latest_rms
 
     @classmethod
     def get_available_devices(cls) -> list[dict[str, Any]]:
@@ -125,6 +135,7 @@ class AudioCapture:
 
         # Compute Root Mean Square (RMS) energy
         rms = np.sqrt(np.mean(audio_data**2)) if len(audio_data) > 0 else 0.0
+        self._latest_rms = rms
 
         if self._state == 0:  # SILENT state
             if rms >= self._silence_threshold:

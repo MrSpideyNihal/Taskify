@@ -315,3 +315,63 @@ def initialize_user_config(force: bool = False) -> Path:
     target_config.write_text(default_text, encoding="utf-8")
 
     return target_config
+
+
+def save_settings(settings: Settings) -> None:
+    """Serialize the settings object back to the configuration file (TOML format).
+
+    Args:
+        settings (Settings): Active application settings.
+    """
+    config_dir, _ = get_default_paths()
+    path = (
+        settings.config_path
+        if settings.config_path
+        else config_dir / "config.toml"
+    )
+
+    # Ensure parent directories exist
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Ensure paths are saved nicely as strings or posix formats
+    s_storage = settings.storage
+    data_dir_str = (
+        s_storage.data_dir.as_posix() if s_storage.data_dir else ""
+    )
+    log_dir_str = (
+        s_storage.log_dir.as_posix() if s_storage.log_dir else ""
+    )
+
+    # Generate custom TOML content
+    lines = [
+        "[audio]",
+        f'device = "{settings.audio.device}"',
+        f"sample_rate = {settings.audio.sample_rate}",
+        f"chunk_duration_ms = {settings.audio.chunk_duration_ms}",
+        f"silence_threshold = {settings.audio.silence_threshold}",
+        f"silence_duration_s = {settings.audio.silence_duration_s}",
+        "",
+        "[stt]",
+        f'engine = "{settings.stt.engine}"',
+        f'vosk_model = "{settings.stt.vosk_model}"',
+        f'whisper_model = "{settings.stt.whisper_model}"',
+        f'language = "{settings.stt.language}"',
+        "",
+        "[llm]",
+        f'backend = "{settings.llm.backend}"',
+        f'ollama_host = "{settings.llm.ollama_host}"',
+        f'ollama_model = "{settings.llm.ollama_model}"',
+        f"extraction_interval_s = {settings.llm.extraction_interval_s}",
+        "",
+        "[storage]",
+        f'data_dir = "{data_dir_str}"',
+        f'log_dir = "{log_dir_str}"',
+        "",
+        "[logging]",
+        f'level = "{settings.logging.level}"',
+        f"debug_llm = {str(settings.logging.debug_llm).lower()}",
+        ""
+    ]
+
+    path.write_text("\n".join(lines), encoding="utf-8")
+    settings.config_path = path

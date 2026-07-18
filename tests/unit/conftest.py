@@ -7,7 +7,31 @@ Imported automatically by pytest via conftest discovery. Sets up
 from __future__ import annotations
 
 import sys
+import tkinter as tk
 from unittest.mock import MagicMock
+
+
+# ---------------------------------------------------------------------------
+# Stub Tkinter Variables (prevents 'no default root window' errors)
+# ---------------------------------------------------------------------------
+
+class DummyVar:
+    def __init__(self, master=None, value=None, name=None) -> None:
+        self._value = value
+
+    def get(self) -> Any:
+        return self._value
+
+    def set(self, val: Any) -> None:
+        self._value = val
+
+# Expose Any for typing in stubs
+from typing import Any
+
+tk.StringVar = DummyVar  # type: ignore[misc]
+tk.BooleanVar = DummyVar  # type: ignore[misc]
+tk.IntVar = DummyVar  # type: ignore[misc]
+tk.DoubleVar = DummyVar  # type: ignore[misc]
 
 
 # ---------------------------------------------------------------------------
@@ -24,6 +48,7 @@ class _W:
 
     # Geometry / layout
     def grid(self, *a, **kw) -> None: pass
+    def grid_remove(self, *a, **kw) -> None: pass
     def grid_propagate(self, *a, **kw) -> None: pass
     def pack(self, *a, **kw) -> None: pass
     def winfo_children(self): return []
@@ -41,6 +66,10 @@ class _W:
     def configure(self, *a, **kw) -> None: pass
     def after(self, ms, func=None, *a): return "after#stub"
     def after_cancel(self, id_) -> None: pass
+    def resizable(self, *a, **kw) -> None: pass
+    def transient(self, *a, **kw) -> None: pass
+    def grab_set(self, *a, **kw) -> None: pass
+    def focus_set(self, *a, **kw) -> None: pass
 
     # Textbox extras
     def get(self, *a) -> str: return self._content
@@ -50,6 +79,11 @@ class _W:
 
     # ProgressBar extras
     def set(self, v) -> None: pass
+
+
+class _Tabview(_W):
+    def add(self, name: str) -> None: pass
+    def tab(self, name: str) -> _W: return _W()
 
 
 class _Font:
@@ -63,6 +97,7 @@ class _Font:
 def _install() -> None:
     mock_ctk = MagicMock()
     mock_ctk.CTk = _W
+    mock_ctk.CTkToplevel = _W
     mock_ctk.CTkFrame = _W
     mock_ctk.CTkLabel = _W
     mock_ctk.CTkScrollableFrame = _W
@@ -70,6 +105,11 @@ def _install() -> None:
     mock_ctk.CTkProgressBar = _W
     mock_ctk.CTkButton = _W
     mock_ctk.CTkTextbox = _W
+    mock_ctk.CTkTabview = _Tabview
+    mock_ctk.CTkOptionMenu = _W
+    mock_ctk.CTkEntry = _W
+    mock_ctk.CTkComboBox = _W
+    mock_ctk.CTkCheckBox = _W
     mock_ctk.set_appearance_mode = MagicMock()
     mock_ctk.set_default_color_theme = MagicMock()
     sys.modules["customtkinter"] = mock_ctk

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import customtkinter as ctk
 
 from taskify.llm.models import MatrixQuadrant
-from taskify.pipeline.scheduler import EVENT_TASKS_UPDATED
+from taskify.pipeline.scheduler import EVENT_SETTINGS_UPDATED, EVENT_TASKS_UPDATED
 
 try:
     from taskify.audio.capture import AudioCapture
@@ -428,9 +428,25 @@ class MainWindow(ctk.CTk):
             state="disabled",
         )
         self.transcript_box.grid(
-            row=8, column=0, padx=12, pady=(0, 16), sticky="nsew"
+            row=8, column=0, padx=12, pady=(0, 8), sticky="nsew"
         )
         panel.grid_rowconfigure(8, weight=1)
+
+        # ---- Settings button ----
+        self.settings_btn = ctk.CTkButton(
+            panel,
+            text="⚙  Settings",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color="transparent",
+            hover_color=CARD_HOVER,
+            text_color=TEXT_SECONDARY,
+            border_color=BORDER_COLOR,
+            border_width=1,
+            corner_radius=8,
+            height=32,
+            command=self.open_settings,
+        )
+        self.settings_btn.grid(row=9, column=0, padx=16, pady=(0, 16), sticky="ew")
 
     # ------------------------------------------------------------------
     # Recording toggle & session timer
@@ -729,3 +745,25 @@ class MainWindow(ctk.CTk):
             lambda: self.time_label.configure(text=f"Last Extraction: {now_str}"),
         )
         self.after(0, self.refresh_all_quadrants)
+
+    def open_settings(self) -> None:
+        """Construct and render the settings dialog."""
+        from taskify.ui.settings_dialog import SettingsDialog
+        SettingsDialog(self, self._settings)
+
+    def apply_settings(self) -> None:
+        """Apply newly updated configuration parameters to UI labels."""
+        # 1. Update STT label
+        if self._settings.stt.engine == "vosk":
+            model_info = self._settings.stt.vosk_model
+        else:
+            model_info = self._settings.stt.whisper_model
+        stt_info = f"STT: {self._settings.stt.engine.upper()} ({model_info})"
+        self.stt_label.configure(text=stt_info)
+
+        # 2. Update LLM label
+        llm_info = f"LLM Backend: {self._settings.llm.backend.upper()}"
+        self.llm_label.configure(text=llm_info)
+
+        # 3. Trigger background tasks reload
+        self._bus.emit(EVENT_SETTINGS_UPDATED, self._settings)

@@ -10,6 +10,7 @@ from taskify.config.settings import (
     get_default_paths,
     initialize_user_config,
     load_settings,
+    save_settings,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "get_default_paths",
     "load_settings",
     "initialize_user_config",
+    "save_settings",
 ]
