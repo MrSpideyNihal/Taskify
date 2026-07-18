@@ -13,6 +13,17 @@ from taskify.storage.models import (
     TranscriptSegment,
 )
 
+# Map app matrix quadrant keys to SQLite DB check constraint values
+_APP_TO_DB_QUADRANT = {
+    "do_first": "urgent_important",
+    "schedule": "important_not_urgent",
+    "delegate": "urgent_not_important",
+    "eliminate": "neither",
+}
+
+# Inverse mapping to translate DB values back for the application
+_DB_TO_APP_QUADRANT = {v: k for k, v in _APP_TO_DB_QUADRANT.items()}
+
 
 class DatabaseManager:
     """Thread-safe SQLite database manager for task and transcript persistence."""
@@ -257,6 +268,7 @@ class DatabaseManager:
         Returns:
             tuple[TaskRecord, MatrixEntry]: Created records.
         """
+        db_quadrant = _APP_TO_DB_QUADRANT.get(quadrant, quadrant)
         with self._lock:
             try:
                 # Insert task details
@@ -271,7 +283,7 @@ class DatabaseManager:
                 # Insert matrix association
                 self._conn.execute(
                     "INSERT INTO matrix_entries (task_id, quadrant) VALUES (?, ?);",
-                    (task_id, quadrant),
+                    (task_id, db_quadrant),
                 )
                 self._conn.commit()
 
@@ -288,7 +300,8 @@ class DatabaseManager:
                     "FROM matrix_entries WHERE task_id = ?;",
                     (task_id,),
                 )
-                matrix_row = matrix_cursor.fetchone()
+                matrix_row = list(matrix_cursor.fetchone())
+                matrix_row[1] = _DB_TO_APP_QUADRANT.get(matrix_row[1], matrix_row[1])
 
                 return (
                     TaskRecord.from_row(tuple(task_row)),
@@ -375,7 +388,7 @@ class DatabaseManager:
                 row[5],
                 row[6],
             )
-            m_row = (row[7], row[8], row[9])
+            m_row = (row[7], _DB_TO_APP_QUADRANT.get(row[8], row[8]), row[9])
 
             return TaskRecord.from_row(t_row), MatrixEntry.from_row(m_row)
 
@@ -390,18 +403,19 @@ class DatabaseManager:
         Returns:
             list[tuple[TaskRecord, MatrixEntry]]: List of tasks matched.
         """
+        db_quadrant = _APP_TO_DB_QUADRANT.get(quadrant, quadrant)
         with self._lock:
             cursor = self._conn.execute(
                 """
                 SELECT t.id, t.title, t.notes, t.due_date, t.status,
                        t.created_at, t.updated_at,
                        m.task_id, m.quadrant, m.user_override
-                FROM tasks t
-                JOIN matrix_entries m ON t.id = m.task_id
-                WHERE m.quadrant = ?
-                ORDER BY t.created_at DESC;
-                """,
-                (quadrant,),
+                 FROM tasks t
+                 JOIN matrix_entries m ON t.id = m.task_id
+                 WHERE m.quadrant = ?
+                 ORDER BY t.created_at DESC;
+                 """,
+                (db_quadrant,),
             )
             rows = cursor.fetchall()
             results = []
@@ -415,7 +429,7 @@ class DatabaseManager:
                     row[5],
                     row[6],
                 )
-                m_row = (row[7], row[8], row[9])
+                m_row = (row[7], _DB_TO_APP_QUADRANT.get(row[8], row[8]), row[9])
                 results.append(
                     (TaskRecord.from_row(t_row), MatrixEntry.from_row(m_row))
                 )
@@ -433,10 +447,10 @@ class DatabaseManager:
                 SELECT t.id, t.title, t.notes, t.due_date, t.status,
                        t.created_at, t.updated_at,
                        m.task_id, m.quadrant, m.user_override
-                FROM tasks t
-                JOIN matrix_entries m ON t.id = m.task_id
-                ORDER BY t.created_at DESC;
-                """
+                 FROM tasks t
+                 JOIN matrix_entries m ON t.id = m.task_id
+                 ORDER BY t.created_at DESC;
+                 """
             )
             rows = cursor.fetchall()
             results = []
@@ -450,7 +464,7 @@ class DatabaseManager:
                     row[5],
                     row[6],
                 )
-                m_row = (row[7], row[8], row[9])
+                m_row = (row[7], _DB_TO_APP_QUADRANT.get(row[8], row[8]), row[9])
                 results.append(
                     (TaskRecord.from_row(t_row), MatrixEntry.from_row(m_row))
                 )
@@ -463,6 +477,7 @@ class DatabaseManager:
             task_id (int): Existing task identifier.
             quadrant (str): Target quadrant name.
         """
+        db_quadrant = _APP_TO_DB_QUADRANT.get(quadrant, quadrant)
         with self._lock:
             try:
                 self._conn.execute(
@@ -471,9 +486,44 @@ class DatabaseManager:
                     SET quadrant = ?, user_override = 1
                     WHERE task_id = ?;
                     """,
-                    (quadrant, task_id),
+                    (db_quadrant, task_id),
                 )
                 self._conn.commit()
             except sqlite3.Error as e:
                 self._conn.rollback()
                 raise e
+
+    def get_transcript_excerpt_for_task(self, task_id: int) -> str:
+        """Find relevant transcript segments that match this task's context.
+
+        Args:
+            task_id (int): Existing task identifier.
+
+        Returns:
+            str: Combined transcript context or a fallback message.
+        """
+        task_data = self.get_task(task_id)
+        if not task_data:
+            return "No task record found."
+
+        task, _ = task_data
+        if not task.created_at:
+            return "No creation timestamp available for context matching."
+
+        with self._lock:
+            try:
+                # Query segments recorded within 10 minutes (600s) of task creation
+                cursor = self._conn.execute(
+                    """
+                    SELECT text FROM transcripts
+                    WHERE abs(strftime('%s', created_at) - strftime('%s', ?)) <= 600
+                    ORDER BY created_at ASC;
+                    """,
+                    (task.created_at,),
+                )
+                rows = cursor.fetchall()
+                if rows:
+                    return " ".join(row[0].strip() for row in rows if row[0])
+            except sqlite3.Error:
+                pass
+        return "No matching transcript context found."

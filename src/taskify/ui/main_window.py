@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from taskify.pipeline.scheduler import EventBus
     from taskify.storage.database import DatabaseManager
     from taskify.storage.models import TaskRecord
+    from taskify.ui.task_detail_panel import TaskDetailPanel
 
 logger = logging.getLogger(__name__)
 
@@ -130,24 +131,31 @@ class TaskCard(ctk.CTkFrame):
             )
             self.footer_label.grid(row=2, column=0, padx=12, pady=(0, 10), sticky="w")
 
-        # Bind hover events for interactive feel
+        # Bind hover and click events for interactive feel
         for widget in (self, self.title_label):
             widget.bind("<Enter>", self._on_enter)
             widget.bind("<Leave>", self._on_leave)
+            widget.bind("<Button-1>", self._on_click)
             widget.bind("<Button-3>", self._show_context_menu)
             widget.bind("<Button-2>", self._show_context_menu)  # macOS right click
 
         if notes_snippet:
             self.notes_label.bind("<Enter>", self._on_enter)
             self.notes_label.bind("<Leave>", self._on_leave)
+            self.notes_label.bind("<Button-1>", self._on_click)
             self.notes_label.bind("<Button-3>", self._show_context_menu)
             self.notes_label.bind("<Button-2>", self._show_context_menu)
 
         if footer_text:
             self.footer_label.bind("<Enter>", self._on_enter)
             self.footer_label.bind("<Leave>", self._on_leave)
+            self.footer_label.bind("<Button-1>", self._on_click)
             self.footer_label.bind("<Button-3>", self._show_context_menu)
             self.footer_label.bind("<Button-2>", self._show_context_menu)
+
+    def _on_click(self, event: tk.Event) -> None:
+        if self.task_id is not None:
+            self.on_action("edit", self.task_id)
 
     def _on_enter(self, event: tk.Event) -> None:
         self.configure(fg_color=CARD_HOVER)
@@ -243,11 +251,16 @@ class MainWindow(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
-        # Responsive main grid layout: control panel col + matrix col
+        # Responsive main grid layout: control sidebar + matrix + task detail panel
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=0)  # Status Bar
         self.grid_columnconfigure(0, weight=0)  # Control sidebar
         self.grid_columnconfigure(1, weight=1)  # Quadrant matrix
+        # Task details sidebar (shows dynamically)
+        self.grid_columnconfigure(2, weight=0)
+
+        self.detail_panel: TaskDetailPanel | None = None
+        self.bind("<Escape>", lambda e: self.close_task_detail())
 
         # Recording state
         self._is_recording = False
@@ -642,7 +655,7 @@ class MainWindow(ctk.CTk):
             border_width=1,
             corner_radius=0,
         )
-        self.status_bar.grid(row=1, column=0, columnspan=2, sticky="ew")
+        self.status_bar.grid(row=1, column=0, columnspan=3, sticky="ew")
 
         # Left: STT Engine & Model details
         if self._settings.stt.engine == "vosk":
@@ -727,9 +740,18 @@ class MainWindow(ctk.CTk):
                     )
             elif action == "delete":
                 self._db.delete_task(task_id)
+                # If deleted task is currently loaded, close details panel
+                if self.detail_panel and self.detail_panel.task_id == task_id:
+                    self.close_task_detail()
+            elif action == "edit":
+                self.open_task_detail(task_id)
+                return
             elif action.startswith("move_"):
                 quadrant_name = action.replace("move_", "")
                 self._db.override_matrix_quadrant(task_id, quadrant_name)
+                # If edited task is currently loaded, reload it in panel
+                if self.detail_panel and self.detail_panel.task_id == task_id:
+                    self.detail_panel.load_task(task_id)
 
             # Trigger a refresh of the dashboard
             self.refresh_all_quadrants()
@@ -767,3 +789,30 @@ class MainWindow(ctk.CTk):
 
         # 3. Trigger background tasks reload
         self._bus.emit(EVENT_SETTINGS_UPDATED, self._settings)
+
+    def open_task_detail(self, task_id: int) -> None:
+        """Create or render the side detail drawer panel for a task.
+
+        Args:
+            task_id (int): Database task identifier.
+        """
+        from taskify.ui.task_detail_panel import TaskDetailPanel
+
+        if not self.detail_panel:
+            self.detail_panel = TaskDetailPanel(
+                self,
+                self._db,
+                on_save_callback=self.refresh_all_quadrants,
+                on_close_callback=self.close_task_detail,
+            )
+
+        # Show panel in column 2, matching height of matrix frame
+        self.detail_panel.grid(
+            row=0, column=2, padx=(0, 16), pady=16, sticky="nsew"
+        )
+        self.detail_panel.load_task(task_id)
+
+    def close_task_detail(self) -> None:
+        """Hide and ungrid the task detail panel from layout."""
+        if self.detail_panel:
+            self.detail_panel.grid_remove()

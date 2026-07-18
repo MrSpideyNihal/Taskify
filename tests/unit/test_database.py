@@ -154,7 +154,7 @@ def test_tasks_crud(temp_db_path: Path) -> None:
         title = "Complete report writing"
         notes = "Needs to be finished before Friday morning"
         due_date = "2026-07-17"
-        quadrant = "urgent_important"
+        quadrant = "do_first"
 
         task, matrix = db.create_task(title, notes, due_date, quadrant)
 
@@ -191,18 +191,18 @@ def test_tasks_crud(temp_db_path: Path) -> None:
         assert updated[0].status == "completed"
 
         # Check tasks by quadrant
-        urgent_tasks = db.get_tasks_in_quadrant("urgent_important")
+        urgent_tasks = db.get_tasks_in_quadrant("do_first")
         assert len(urgent_tasks) == 1
         assert urgent_tasks[0][0].id == task.id
 
-        empty_quadrant = db.get_tasks_in_quadrant("neither")
+        empty_quadrant = db.get_tasks_in_quadrant("eliminate")
         assert len(empty_quadrant) == 0
 
         # Override quadrant
-        db.override_matrix_quadrant(task.id, "neither")
+        db.override_matrix_quadrant(task.id, "eliminate")
         overridden = db.get_task(task.id)
         assert overridden is not None
-        assert overridden[1].quadrant == "neither"
+        assert overridden[1].quadrant == "eliminate"
         assert overridden[1].user_override
 
         # Delete task
