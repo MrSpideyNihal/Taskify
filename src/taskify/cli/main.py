@@ -10,6 +10,16 @@ from taskify import __version__
 @click.pass_context
 def main(ctx: click.Context, version: bool) -> None:
     """Taskify: A fully offline, privacy-first, voice-driven task manager."""
+    # Initialize unified log configurations on startup
+    try:
+        from taskify.config import load_settings
+        from taskify.logging_config import configure_logging
+
+        settings = load_settings()
+        configure_logging(settings)
+    except Exception:
+        pass
+
     if version:
         click.echo(f"Taskify version {__version__}")
         ctx.exit(0)

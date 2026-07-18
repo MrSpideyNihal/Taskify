@@ -1,6 +1,7 @@
 """Microphone audio capture module with RMS-based silence detection."""
 
 import collections
+import logging
 import queue
 import sys
 from typing import Any
@@ -9,6 +10,8 @@ import numpy as np
 import sounddevice as sd
 
 from taskify.config import Settings
+
+logger = logging.getLogger(__name__)
 
 
 class AudioCapture:
@@ -140,6 +143,12 @@ class AudioCapture:
         if self._state == 0:  # SILENT state
             if rms >= self._silence_threshold:
                 # Transition to ACTIVE
+                logger.info(
+                    "AudioCapture: speech activity detected (RMS: %.4f >= %.4f). "
+                    "Transitioning to ACTIVE state.",
+                    rms,
+                    self._silence_threshold,
+                )
                 self._state = 1
                 self._silence_counter = 0
 
@@ -149,20 +158,42 @@ class AudioCapture:
                 self._queue.put(audio_data)
             else:
                 # Retain sliding window history
+                logger.debug(
+                    "AudioCapture: silent chunk ignored (RMS: %.4f < %.4f).",
+                    rms,
+                    self._silence_threshold,
+                )
                 self._preroll_buffer.append(audio_data)
         else:  # ACTIVE state
             if rms < self._silence_threshold:
                 self._silence_counter += 1
                 if self._silence_counter >= self._silence_limit:
                     # Transition to SILENT
+                    logger.info(
+                        "AudioCapture: silence duration limit met (counter: %d/%d). "
+                        "Transitioning to SILENT state.",
+                        self._silence_counter,
+                        self._silence_limit,
+                    )
                     self._state = 0
                     self._silence_counter = 0
                     self._preroll_buffer.clear()
                     self._preroll_buffer.append(audio_data)
                 else:
+                    logger.debug(
+                        "AudioCapture: active chunk recorded with low energy "
+                        "(RMS: %.4f, counter: %d/%d).",
+                        rms,
+                        self._silence_counter,
+                        self._silence_limit,
+                    )
                     self._queue.put(audio_data)
             else:
                 self._silence_counter = 0
+                logger.debug(
+                    "AudioCapture: recording active chunk (RMS: %.4f).",
+                    rms,
+                )
                 self._queue.put(audio_data)
 
     def start(self) -> None:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import time
 import tkinter as tk
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -264,6 +265,7 @@ class MainWindow(ctk.CTk):
 
         # Recording state
         self._is_recording = False
+        self._session_id: str | None = None
         self._session_start: float | None = None
         self._timer_after_id: str | None = None
         self._level_after_id: str | None = None
@@ -474,6 +476,19 @@ class MainWindow(ctk.CTk):
 
     def _start_recording(self) -> None:
         """Open AudioCapture stream and begin session timer."""
+        session_id = str(uuid.uuid4())
+        self._session_id = session_id
+        self._session_start_epoch = time.time()
+
+        try:
+            self._db.create_session(session_id, self._session_start_epoch)
+        except Exception as exc:
+            logger.error("Failed to create database session record: %s", exc)
+
+        # Set active session ID for formatters
+        from taskify.logging_config import set_active_session_id
+        set_active_session_id(session_id)
+
         try:
             if AudioCapture is None:
                 raise RuntimeError("AudioCapture unavailable (portaudio missing?)")
@@ -503,6 +518,17 @@ class MainWindow(ctk.CTk):
     def _stop_recording(self) -> None:
         """Close AudioCapture stream and cancel timer."""
         self._is_recording = False
+
+        if self._session_id is not None:
+            try:
+                self._db.close_session(self._session_id, time.time())
+            except Exception as exc:
+                logger.error("Failed to close database session record: %s", exc)
+            self._session_id = None
+
+        # Reset active session ID in context formatter
+        from taskify.logging_config import set_active_session_id
+        set_active_session_id(None)
 
         if self._audio_capture is not None:
             try:

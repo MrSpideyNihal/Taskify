@@ -168,12 +168,15 @@ class OllamaBackend(LLMBackend):
             "options": {"temperature": 0.1},
         }
 
+        logger.debug("Ollama request prompt:\n%s", prompt)
+
         for attempt in range(1, self._retries + 1):
             try:
                 resp = self._client.post(url, json=payload)
                 resp.raise_for_status()
                 data = resp.json()
                 response_text: str = data.get("response", "")
+                logger.debug("Ollama response:\n%s", response_text)
                 return response_text
             except httpx.HTTPStatusError as exc:
                 logger.warning(
