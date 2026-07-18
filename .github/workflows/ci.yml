@@ -52,8 +52,8 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get install -y xvfb
-          xvfb-run --server-args="-screen 0 1024x768x24" pytest tests/unit/ -v --cov=src --cov-fail-under=80 --cov-report=xml
+          xvfb-run --server-args="-screen 0 1024x768x24" pytest tests/ -v --cov=src --cov-fail-under=80 --cov-report=xml
 
       - name: Run Pytest with Coverage (Windows)
         if: matrix.os == 'windows-latest'
-        run: pytest tests/unit/ -v --cov=src --cov-fail-under=80 --cov-report=xml
+        run: pytest tests/ -v --cov=src --cov-fail-under=80 --cov-report=xml

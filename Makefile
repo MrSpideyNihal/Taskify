@@ -9,7 +9,7 @@ clean:
 	python -c "import shutil; [shutil.rmtree(p, ignore_errors=True) for p in ('build', 'dist')]"
 
 test:
-	pytest tests/unit/ -v
+	pytest tests/ -v
 
 lint:
 	ruff check src/ --fix
