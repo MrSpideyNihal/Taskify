@@ -44,7 +44,7 @@ class _W:
     _content: str = ""
 
     def __init__(self, *a, **kw) -> None:
-        pass
+        self._state = kw.get("state", "normal")
 
     # Geometry / layout
     def grid(self, *a, **kw) -> None: pass
@@ -63,7 +63,14 @@ class _W:
     def title(self, *a, **kw) -> None: pass
     def geometry(self, *a, **kw) -> None: pass
     def minsize(self, *a, **kw) -> None: pass
-    def configure(self, *a, **kw) -> None: pass
+    def configure(self, *a, **kw) -> None:
+        if "state" in kw:
+            self._state = kw["state"]
+
+    def cget(self, attr: str) -> Any:
+        if attr == "state":
+            return self._state
+        return None
     def after(self, ms, func=None, *a): return "after#stub"
     def after_cancel(self, id_) -> None: pass
     def resizable(self, *a, **kw) -> None: pass

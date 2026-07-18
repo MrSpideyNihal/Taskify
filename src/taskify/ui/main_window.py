@@ -447,9 +447,29 @@ class MainWindow(ctk.CTk):
         )
         panel.grid_rowconfigure(8, weight=1)
 
-        # ---- Settings button ----
+        # ---- Bottom Actions Frame ----
+        actions_frame = ctk.CTkFrame(panel, fg_color="transparent")
+        actions_frame.grid(row=9, column=0, padx=16, pady=(0, 16), sticky="ew")
+        actions_frame.grid_columnconfigure(0, weight=1)
+        actions_frame.grid_columnconfigure(1, weight=1)
+
+        self.export_btn = ctk.CTkButton(
+            actions_frame,
+            text="📤  Export",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color="transparent",
+            hover_color=CARD_HOVER,
+            text_color=TEXT_SECONDARY,
+            border_color=BORDER_COLOR,
+            border_width=1,
+            corner_radius=8,
+            height=32,
+            command=self.open_export,
+        )
+        self.export_btn.grid(row=0, column=0, padx=(0, 4), pady=0, sticky="ew")
+
         self.settings_btn = ctk.CTkButton(
-            panel,
+            actions_frame,
             text="⚙  Settings",
             font=ctk.CTkFont(size=12, weight="bold"),
             fg_color="transparent",
@@ -461,7 +481,7 @@ class MainWindow(ctk.CTk):
             height=32,
             command=self.open_settings,
         )
-        self.settings_btn.grid(row=9, column=0, padx=16, pady=(0, 16), sticky="ew")
+        self.settings_btn.grid(row=0, column=1, padx=(4, 0), pady=0, sticky="ew")
 
     # ------------------------------------------------------------------
     # Recording toggle & session timer
@@ -798,6 +818,11 @@ class MainWindow(ctk.CTk):
         """Construct and render the settings dialog."""
         from taskify.ui.settings_dialog import SettingsDialog
         SettingsDialog(self, self._settings)
+
+    def open_export(self) -> None:
+        """Construct and render the export configuration dialog."""
+        from taskify.ui.export_dialog import ExportDialog
+        ExportDialog(self, self._db)
 
     def apply_settings(self) -> None:
         """Apply newly updated configuration parameters to UI labels."""
