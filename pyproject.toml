@@ -36,6 +36,16 @@ nlp = [
 whisper = [
     "faster-whisper>=0.10.0",
 ]
+# Mobile target: installs only the core logic packages.
+# Excludes desktop-only: sounddevice, soundfile, vosk, customtkinter, httpx.
+# Intended for Chaquopy (Android) or Kivy-based targets where:
+#   - STT is handled by the Vosk Android AAR (Java/Kotlin bridge)
+#   - GUI is provided by Kivy or a native Android layout
+#   - Audio capture uses the Android AudioRecord API
+core_mobile = [
+    "numpy>=1.24.0",
+    "click>=8.1.0",
+]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
