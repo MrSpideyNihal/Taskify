@@ -42,6 +42,8 @@ logger = logging.getLogger(__name__)
 EVENT_TASKS_UPDATED = "tasks_updated"
 # Event name emitted when configuration settings are updated
 EVENT_SETTINGS_UPDATED = "settings_updated"
+# Event name to trigger immediate manual extraction
+EVENT_TRIGGER_EXTRACTION = "trigger_extraction"
 
 
 class EventBus:
@@ -144,6 +146,7 @@ class ExtractionScheduler:
 
         # Subscribe to settings updates to allow live reload of extraction interval
         self._bus.subscribe(EVENT_SETTINGS_UPDATED, self._on_settings_updated)
+        self._bus.subscribe(EVENT_TRIGGER_EXTRACTION, self._on_trigger_extraction)
 
     # ------------------------------------------------------------------
     # Public API
@@ -287,3 +290,18 @@ class ExtractionScheduler:
             old_interval,
             self._interval_s,
         )
+
+    def _on_trigger_extraction(self, data: object = None) -> None:
+        """Start an immediate manual task extraction cycle in the background."""
+        logger.info("ExtractionScheduler: received immediate manual trigger.")
+        t = threading.Thread(
+            target=self._run_extraction_cycle_with_lock,
+            name="ExtractionScheduler-manual-trigger",
+            daemon=True,
+        )
+        t.start()
+
+    def _run_extraction_cycle_with_lock(self) -> None:
+        with self._running_lock:
+            if not self._stop_event.is_set():
+                self._run_extraction_cycle()

@@ -690,6 +690,8 @@ class MainWindow(ctk.CTk):
             try:
                 self._transcript_writer.write(segment)
                 self._transcript_writer.flush()
+                # Trigger immediate extraction on the EventBus so tasks appear instantly
+                self.bus.emit("trigger_extraction")
             except Exception as exc:
                 logger.error("Error saving transcript segment: %s", exc)
 

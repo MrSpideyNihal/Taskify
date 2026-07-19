@@ -11,6 +11,7 @@ import pytest
 from taskify.llm.models import MatrixQuadrant, TaskItem
 from taskify.pipeline.scheduler import (
     EVENT_TASKS_UPDATED,
+    EVENT_TRIGGER_EXTRACTION,
     EventBus,
     ExtractionScheduler,
 )
@@ -238,6 +239,28 @@ class TestExtractionCycle:
         mock_db.get_unprocessed_transcripts.side_effect = RuntimeError("db gone")
         scheduler._run_extraction_cycle()  # must not raise
         mock_backend.extract_tasks.assert_not_called()
+
+    def test_manual_trigger_extraction(
+        self,
+        scheduler: ExtractionScheduler,
+        mock_db: MagicMock,
+        mock_backend: MagicMock,
+        bus: EventBus,
+    ) -> None:
+        seg = _make_segment("Immediate task", 1)
+        mock_db.get_unprocessed_transcripts.return_value = [seg]
+        mock_backend.extract_tasks.return_value = [_make_task("Immediate task")]
+
+        # Emit the manual trigger event
+        bus.emit(EVENT_TRIGGER_EXTRACTION)
+
+        # Give the background thread a short moment to execute
+        time.sleep(0.1)
+
+        # Extraction should be performed immediately
+        mock_db.get_unprocessed_transcripts.assert_called()
+        mock_backend.extract_tasks.assert_called_with("Immediate task")
+        mock_db.create_task.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
