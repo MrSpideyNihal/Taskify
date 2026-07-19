@@ -661,10 +661,35 @@ class MainWindow(ctk.CTk):
                             accumulated_text.append(text_str)
                             # Update live transcript UI thread-safely
                             self.after(0, lambda t=text_str: self.append_transcript(t))
+
+                            # Persist segment immediately while recording is running
+                            if self._transcript_writer is not None:
+                                elapsed = time.monotonic() - (
+                                    self._session_start or time.monotonic()
+                                )
+                                segment = TranscriptSegment(
+                                    session_id=session_id,
+                                    text=text_str,
+                                    confidence=0.95,
+                                    start_time=start_time,
+                                    end_time=max(elapsed, start_time + 1.0),
+                                )
+                                try:
+                                    self._transcript_writer.write(segment)
+                                    self._transcript_writer.flush()
+                                    # Trigger extraction so tasks appear in real-time
+                                    self.bus.emit("trigger_extraction")
+                                except Exception as exc:
+                                    logger.error(
+                                        "Error saving live transcript segment: %s",
+                                        exc,
+                                    )
+                                start_time = elapsed
                 except Exception as exc:
                     logger.error("Error transcribing chunk: %s", exc)
 
         # Flush remaining buffer in STT engine
+        final_text_str = None
         try:
             final_text = self._stt_engine.flush()
             if final_text:
@@ -675,14 +700,12 @@ class MainWindow(ctk.CTk):
         except Exception as exc:
             logger.error("Error flushing STT engine: %s", exc)
 
-        # Persist full transcribed text as a segment in the database session
-        full_transcript = " ".join(accumulated_text).strip()
-        if full_transcript and self._transcript_writer is not None:
-            # End time is session elapsed time
+        # Persist the final flushed segment (if any)
+        if final_text_str and self._transcript_writer is not None:
             elapsed = time.monotonic() - (self._session_start or time.monotonic())
             segment = TranscriptSegment(
                 session_id=session_id,
-                text=full_transcript,
+                text=final_text_str,
                 confidence=0.95,
                 start_time=start_time,
                 end_time=max(elapsed, start_time + 1.0),
@@ -690,10 +713,10 @@ class MainWindow(ctk.CTk):
             try:
                 self._transcript_writer.write(segment)
                 self._transcript_writer.flush()
-                # Trigger immediate extraction on the EventBus so tasks appear instantly
+                # Trigger one final extraction on the EventBus
                 self.bus.emit("trigger_extraction")
             except Exception as exc:
-                logger.error("Error saving transcript segment: %s", exc)
+                logger.error("Error saving final transcript segment: %s", exc)
 
     def _tick_timer(self) -> None:
         """Update session MM:SS timer every second while recording."""
