@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
 
@@ -10,13 +11,13 @@ from taskify.config import (
     LLMSettings,
     LoggingSettings,
     Settings,
-    STTSettings,
     StorageSettings,
+    STTSettings,
 )
 from taskify.stt import (
     VoskEngine,
-    get_stt_engine,
     download_vosk_model,
+    get_stt_engine,
 )
 
 

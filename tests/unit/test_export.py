@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Generator
 
@@ -14,12 +14,12 @@ from taskify.config import (
     LLMSettings,
     LoggingSettings,
     Settings,
-    STTSettings,
     StorageSettings,
+    STTSettings,
 )
 from taskify.export import export_tasks_to_file
 from taskify.storage.database import DatabaseManager
-from taskify.storage.models import TaskRecord, TranscriptSegment
+from taskify.storage.models import TranscriptSegment
 
 
 @pytest.fixture
@@ -98,7 +98,8 @@ def db(test_settings: Settings) -> Generator[DatabaseManager, None, None]:
     # Force task 1 timestamp for date range check
     with manager._lock:
         manager._conn.execute(
-            "UPDATE tasks SET created_at = '2026-07-18 12:00:05' WHERE id = ?;", (t1[0].id,)
+            "UPDATE tasks SET created_at = '2026-07-18 12:00:05' WHERE id = ?;",
+            (t1[0].id,),
         )
         manager._conn.commit()
 
@@ -112,7 +113,8 @@ def db(test_settings: Settings) -> Generator[DatabaseManager, None, None]:
     # Force task 2 timestamp
     with manager._lock:
         manager._conn.execute(
-            "UPDATE tasks SET created_at = '2026-07-19 14:00:00' WHERE id = ?;", (t2[0].id,)
+            "UPDATE tasks SET created_at = '2026-07-19 14:00:00' WHERE id = ?;",
+            (t2[0].id,),
         )
         manager._conn.commit()
 
@@ -151,7 +153,9 @@ def test_export_to_markdown(db: DatabaseManager, tmp_path: Path) -> None:
     assert "# Taskify Tasks Export" in content
     assert "- [ ] **Buy groceries**" in content
     assert "  - **Quadrant:** Do First (Urgent & Important)" in content
-    assert "  - **Transcript Excerpt:** *Buy some fresh groceries immediately.*" in content
+    assert (
+        "  - **Transcript Excerpt:** *Buy some fresh groceries immediately.*" in content
+    )
     assert "- [ ] **Plan roadmap**" in content
 
 
@@ -176,7 +180,9 @@ def test_export_with_date_range_filters(db: DatabaseManager, tmp_path: Path) -> 
     start = datetime(2026, 7, 18, 0, 0, 0)
     end = datetime(2026, 7, 18, 23, 59, 59)
 
-    count = export_tasks_to_file(db, filepath, format="json", start_date=start, end_date=end)
+    count = export_tasks_to_file(
+        db, filepath, format="json", start_date=start, end_date=end
+    )
     assert count == 1
 
     with open(filepath, "r", encoding="utf-8") as f:
@@ -187,7 +193,9 @@ def test_export_with_date_range_filters(db: DatabaseManager, tmp_path: Path) -> 
     start = datetime(2026, 7, 19, 0, 0, 0)
     end = datetime(2026, 7, 19, 23, 59, 59)
 
-    count = export_tasks_to_file(db, filepath, format="json", start_date=start, end_date=end)
+    count = export_tasks_to_file(
+        db, filepath, format="json", start_date=start, end_date=end
+    )
     assert count == 1
 
     with open(filepath, "r", encoding="utf-8") as f:

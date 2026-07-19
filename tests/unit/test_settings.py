@@ -1,19 +1,18 @@
 """Unit tests for the Taskify configuration management and settings."""
 
 from pathlib import Path
+
 import pytest
+
 from taskify.config import (
-    Settings,
-    load_settings,
-    initialize_user_config,
     get_default_paths,
+    load_settings,
 )
 from taskify.config.settings import (
     AudioSettings,
-    STTSettings,
     LLMSettings,
     LoggingSettings,
-    StorageSettings,
+    STTSettings,
     merge_dicts,
 )
 

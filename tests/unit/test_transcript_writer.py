@@ -1,19 +1,18 @@
 """Unit tests for TranscriptWriter — batch flushing and daily log rotation."""
 
 import json
-import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from taskify.storage.models import TranscriptSegment
 from taskify.storage.transcript_writer import TranscriptWriter
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _seg(
     text: str = "Buy oat milk",
@@ -57,6 +56,7 @@ def writer(mock_db: MagicMock, tmp_path: Path) -> TranscriptWriter:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestTranscriptWriterBatching:
     """Verify that segments are persisted via DatabaseManager."""
 
@@ -80,8 +80,7 @@ class TestTranscriptWriterBatching:
 
         # May be in one or more calls; total segments must equal 5
         total = sum(
-            len(call.args[0])
-            for call in mock_db.insert_transcripts.call_args_list
+            len(call.args[0]) for call in mock_db.insert_transcripts.call_args_list
         )
         assert total == 5
 
@@ -92,9 +91,7 @@ class TestTranscriptWriterBatching:
         # Thread was never started — just mark stopped so stop() is a no-op
         w._stopped = True
 
-    def test_write_raises_after_stop(
-        self, writer: TranscriptWriter
-    ) -> None:
+    def test_write_raises_after_stop(self, writer: TranscriptWriter) -> None:
         writer.stop()
         with pytest.raises(RuntimeError, match="stopped"):
             writer.write(_seg())
@@ -114,9 +111,7 @@ class TestDailyLogRotation:
         content = md_files[0].read_text(encoding="utf-8")
         assert "Call the dentist" in content
 
-    def test_json_file_created(
-        self, writer: TranscriptWriter, tmp_path: Path
-    ) -> None:
+    def test_json_file_created(self, writer: TranscriptWriter, tmp_path: Path) -> None:
         writer.write(_seg("Book a flight"))
         writer.flush()
 
@@ -144,13 +139,9 @@ class TestDailyLogRotation:
         logged_texts = [json.loads(l)["text"] for l in lines]
         assert set(logged_texts) == set(texts)
 
-    def test_log_rotates_at_midnight(
-        self, mock_db: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_log_rotates_at_midnight(self, mock_db: MagicMock, tmp_path: Path) -> None:
         """Simulate a date change and verify a new log file is created."""
-        w = TranscriptWriter(
-            db=mock_db, log_dir=tmp_path, flush_interval_s=0.2
-        )
+        w = TranscriptWriter(db=mock_db, log_dir=tmp_path, flush_interval_s=0.2)
         w.start()
 
         # Patch _current_date_str to return "day-one" first, then "day-two"
@@ -190,12 +181,8 @@ class TestDailyLogRotation:
 class TestGracefulShutdown:
     """Verify that stop() drains the queue before exiting."""
 
-    def test_stop_drains_all_segments(
-        self, mock_db: MagicMock, tmp_path: Path
-    ) -> None:
-        w = TranscriptWriter(
-            db=mock_db, log_dir=tmp_path, flush_interval_s=60.0
-        )
+    def test_stop_drains_all_segments(self, mock_db: MagicMock, tmp_path: Path) -> None:
+        w = TranscriptWriter(db=mock_db, log_dir=tmp_path, flush_interval_s=60.0)
         w.start()
 
         for i in range(15):
@@ -204,7 +191,6 @@ class TestGracefulShutdown:
         w.stop()  # Must drain before returning
 
         total = sum(
-            len(call.args[0])
-            for call in mock_db.insert_transcripts.call_args_list
+            len(call.args[0]) for call in mock_db.insert_transcripts.call_args_list
         )
         assert total == 15

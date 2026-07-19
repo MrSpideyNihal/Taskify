@@ -4,18 +4,22 @@ from __future__ import annotations
 
 import threading
 import time
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from taskify.llm.models import MatrixQuadrant, TaskItem
-from taskify.pipeline.scheduler import EVENT_TASKS_UPDATED, EventBus, ExtractionScheduler
+from taskify.pipeline.scheduler import (
+    EVENT_TASKS_UPDATED,
+    EventBus,
+    ExtractionScheduler,
+)
 from taskify.storage.models import TranscriptSegment
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_segment(
     text: str = "Buy milk today",
@@ -87,6 +91,7 @@ def scheduler(
 # EventBus
 # ---------------------------------------------------------------------------
 
+
 class TestEventBus:
     def test_subscribe_and_emit(self, bus: EventBus) -> None:
         received: list[object] = []
@@ -129,6 +134,7 @@ class TestEventBus:
 # ---------------------------------------------------------------------------
 # ExtractionScheduler — cycle logic
 # ---------------------------------------------------------------------------
+
 
 class TestExtractionCycle:
     def test_no_segments_skips_backend(
@@ -238,22 +244,19 @@ class TestExtractionCycle:
 # ExtractionScheduler — lifecycle
 # ---------------------------------------------------------------------------
 
+
 class TestSchedulerLifecycle:
     def test_is_running_false_before_start(
         self, scheduler: ExtractionScheduler
     ) -> None:
         assert scheduler.is_running is False
 
-    def test_is_running_true_after_start(
-        self, scheduler: ExtractionScheduler
-    ) -> None:
+    def test_is_running_true_after_start(self, scheduler: ExtractionScheduler) -> None:
         scheduler.start()
         assert scheduler.is_running is True
         scheduler.stop()
 
-    def test_is_running_false_after_stop(
-        self, scheduler: ExtractionScheduler
-    ) -> None:
+    def test_is_running_false_after_stop(self, scheduler: ExtractionScheduler) -> None:
         scheduler.start()
         scheduler.stop()
         assert scheduler.is_running is False
@@ -264,9 +267,7 @@ class TestSchedulerLifecycle:
         assert scheduler.is_running is True
         scheduler.stop()
 
-    def test_stop_before_start_is_safe(
-        self, scheduler: ExtractionScheduler
-    ) -> None:
+    def test_stop_before_start_is_safe(self, scheduler: ExtractionScheduler) -> None:
         scheduler.stop()  # must not raise
 
     def test_timer_fires_and_extracts(

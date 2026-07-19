@@ -1,7 +1,6 @@
 """Unit tests for Whisper speech-to-text engine and configurations."""
 
 import sys
-from pathlib import Path
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
@@ -13,8 +12,8 @@ from taskify.config import (
     LLMSettings,
     LoggingSettings,
     Settings,
-    STTSettings,
     StorageSettings,
+    STTSettings,
 )
 from taskify.stt import WhisperEngine, download_whisper_model, get_stt_engine
 

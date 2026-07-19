@@ -12,8 +12,8 @@ from taskify.config import (
     LLMSettings,
     LoggingSettings,
     Settings,
-    STTSettings,
     StorageSettings,
+    STTSettings,
 )
 from taskify.llm.models import MatrixQuadrant
 from taskify.pipeline.scheduler import EVENT_TASKS_UPDATED, EventBus
@@ -77,7 +77,7 @@ def test_main_window_initialization(
 ) -> None:
     """Test that MainWindow configures parameters and registers event listener."""
     window = MainWindow(mock_db, dummy_settings, bus)
-    
+
     # Assert that quadrants are present in window
     assert len(window.quadrants) == 4
     assert MatrixQuadrant.DO_FIRST.value in window.quadrants
@@ -103,7 +103,7 @@ def test_refresh_all_quadrants(
 
     with patch("taskify.ui.main_window.TaskCard") as mock_task_card_class:
         window.refresh_all_quadrants()
-        
+
         # Verify db.get_tasks_in_quadrant was called for each quadrant
         assert mock_db.get_tasks_in_quadrant.call_count == 4
         # Verify TaskCard was instantiated
@@ -119,7 +119,7 @@ def test_handle_task_action_complete(
     window = MainWindow(mock_db, dummy_settings, bus)
 
     window.handle_task_action("complete", 42)
-    
+
     mock_db.get_task.assert_called_once_with(42)
     mock_db.update_task.assert_called_once_with(
         task_id=42,
@@ -139,7 +139,7 @@ def test_handle_task_action_delete(
     window = MainWindow(mock_db, dummy_settings, bus)
 
     window.handle_task_action("delete", 42)
-    
+
     mock_db.delete_task.assert_called_once_with(42)
 
 
@@ -152,7 +152,7 @@ def test_handle_task_action_move(
     window = MainWindow(mock_db, dummy_settings, bus)
 
     window.handle_task_action("move_schedule", 42)
-    
+
     mock_db.override_matrix_quadrant.assert_called_once_with(42, "schedule")
 
 
@@ -163,9 +163,9 @@ def test_event_bus_refreshes_ui(
 ) -> None:
     """Test that emitting EVENT_TASKS_UPDATED schedules UI refresh."""
     window = MainWindow(mock_db, dummy_settings, bus)
-    
+
     with patch.object(window, "after") as mock_after:
         bus.emit(EVENT_TASKS_UPDATED)
-        
+
         # event should trigger UI schedule via window.after
         assert mock_after.call_count >= 1

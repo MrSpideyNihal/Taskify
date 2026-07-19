@@ -13,8 +13,8 @@ from taskify.config import (
     LLMSettings,
     LoggingSettings,
     Settings,
-    STTSettings,
     StorageSettings,
+    STTSettings,
 )
 from taskify.ui.settings_dialog import SettingsDialog
 
@@ -68,6 +68,7 @@ def dialog(mock_parent, dummy_settings) -> SettingsDialog:
 # Initialization tests
 # ---------------------------------------------------------------------------
 
+
 class TestSettingsDialogInit:
     def test_default_values_load(self, dialog: SettingsDialog) -> None:
         assert dialog.device_var.get() == "default"
@@ -88,6 +89,7 @@ class TestSettingsDialogInit:
 # ---------------------------------------------------------------------------
 # UI Interactions
 # ---------------------------------------------------------------------------
+
 
 class TestSettingsDialogUIInteractions:
     def test_stt_engine_changed(self, dialog: SettingsDialog) -> None:
@@ -117,11 +119,17 @@ class TestSettingsDialogUIInteractions:
 # Validation & Saving tests
 # ---------------------------------------------------------------------------
 
+
 class TestSettingsDialogSaveValidation:
     def test_save_valid_vosk_settings(self, dialog: SettingsDialog) -> None:
-        with patch.dict(sys.modules, {"vosk": MagicMock()}), \
-             patch("taskify.stt.vosk_engine.VoskEngine.model_path", new_callable=PropertyMock) as mock_path, \
-             patch("taskify.ui.settings_dialog.save_settings") as mock_save:
+        with (
+            patch.dict(sys.modules, {"vosk": MagicMock()}),
+            patch(
+                "taskify.stt.vosk_engine.VoskEngine.model_path",
+                new_callable=PropertyMock,
+            ) as mock_path,
+            patch("taskify.ui.settings_dialog.save_settings") as mock_save,
+        ):
             mock_dir = MagicMock()
             mock_dir.exists.return_value = True
             mock_dir.is_dir.return_value = True
@@ -137,14 +145,20 @@ class TestSettingsDialogSaveValidation:
         with patch("tkinter.messagebox.showerror") as mock_err:
             dialog.save()
             assert mock_err.called
-            assert "Invalid format in Audio numeric values" in mock_err.call_args[1]["message"]
+            assert (
+                "Invalid format in Audio numeric values"
+                in mock_err.call_args[1]["message"]
+            )
 
     def test_save_negative_audio_rate(self, dialog: SettingsDialog) -> None:
         dialog.sample_rate_var.set("-16000")
         with patch("tkinter.messagebox.showerror") as mock_err:
             dialog.save()
             assert mock_err.called
-            assert "audio.sample_rate must be a positive integer" in mock_err.call_args[1]["message"]
+            assert (
+                "audio.sample_rate must be a positive integer"
+                in mock_err.call_args[1]["message"]
+            )
 
     def test_save_whisper_checks_installed(self, dialog: SettingsDialog) -> None:
         dialog.stt_engine_var.set("whisper")
@@ -155,7 +169,10 @@ class TestSettingsDialogSaveValidation:
             with patch("tkinter.messagebox.showerror") as mock_err:
                 dialog.save()
                 assert mock_err.called
-                assert "faster-whisper' is not installed" in mock_err.call_args[1]["message"]
+                assert (
+                    "faster-whisper' is not installed"
+                    in mock_err.call_args[1]["message"]
+                )
 
     def test_save_whisper_invalid_model(self, dialog: SettingsDialog) -> None:
         dialog.stt_engine_var.set("whisper")
@@ -166,7 +183,10 @@ class TestSettingsDialogSaveValidation:
             with patch("tkinter.messagebox.showerror") as mock_err:
                 dialog.save()
                 assert mock_err.called
-                assert "invalid, and no such local model folder exists" in mock_err.call_args[1]["message"]
+                assert (
+                    "invalid, and no such local model folder exists"
+                    in mock_err.call_args[1]["message"]
+                )
 
     def test_save_vosk_checks_installed(self, dialog: SettingsDialog) -> None:
         dialog.stt_engine_var.set("vosk")
@@ -176,14 +196,19 @@ class TestSettingsDialogSaveValidation:
             with patch("tkinter.messagebox.showerror") as mock_err:
                 dialog.save()
                 assert mock_err.called
-                assert "vosk' package is not installed" in mock_err.call_args[1]["message"]
+                assert (
+                    "vosk' package is not installed" in mock_err.call_args[1]["message"]
+                )
 
     def test_save_vosk_missing_model_path(self, dialog: SettingsDialog) -> None:
         dialog.stt_engine_var.set("vosk")
         dialog.vosk_model_var.set("en-small")
 
         with patch.dict(sys.modules, {"vosk": MagicMock()}):
-            with patch("taskify.stt.vosk_engine.VoskEngine.model_path", new_callable=PropertyMock) as mock_path:
+            with patch(
+                "taskify.stt.vosk_engine.VoskEngine.model_path",
+                new_callable=PropertyMock,
+            ) as mock_path:
                 mock_dir = MagicMock()
                 mock_dir.exists.return_value = False  # Model path doesn't exist
                 mock_path.return_value = mock_dir
@@ -198,7 +223,10 @@ class TestSettingsDialogSaveValidation:
 
         # Mock vosk dependency and model directory checks so STT validation passes
         with patch.dict(sys.modules, {"vosk": MagicMock()}):
-            with patch("taskify.stt.vosk_engine.VoskEngine.model_path", new_callable=PropertyMock) as mock_path:
+            with patch(
+                "taskify.stt.vosk_engine.VoskEngine.model_path",
+                new_callable=PropertyMock,
+            ) as mock_path:
                 mock_dir = MagicMock()
                 mock_dir.exists.return_value = True
                 mock_dir.is_dir.return_value = True
@@ -207,4 +235,7 @@ class TestSettingsDialogSaveValidation:
                 with patch("tkinter.messagebox.showerror") as mock_err:
                     dialog.save()
                     assert mock_err.called
-                    assert "Extraction interval must be an integer" in mock_err.call_args[1]["message"]
+                    assert (
+                        "Extraction interval must be an integer"
+                        in mock_err.call_args[1]["message"]
+                    )

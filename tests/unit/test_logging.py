@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -14,8 +13,8 @@ from taskify.config import (
     LLMSettings,
     LoggingSettings,
     Settings,
-    STTSettings,
     StorageSettings,
+    STTSettings,
 )
 from taskify.logging_config import (
     SessionIDFilter,

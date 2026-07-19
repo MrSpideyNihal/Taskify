@@ -3,12 +3,11 @@
 import sqlite3
 import threading
 from pathlib import Path
+
 import pytest
+
 from taskify.storage import (
     DatabaseManager,
-    MatrixEntry,
-    SessionRecord,
-    TaskRecord,
     TranscriptSegment,
 )
 
@@ -181,9 +180,7 @@ def test_tasks_crud(temp_db_path: Path) -> None:
         assert all_tasks[0][0].id == task.id
 
         # Update task
-        db.update_task(
-            task.id, "Complete report", "ASAP", "2026-07-16", "completed"
-        )
+        db.update_task(task.id, "Complete report", "ASAP", "2026-07-16", "completed")
         updated = db.get_task(task.id)
         assert updated is not None
         assert updated[0].title == "Complete report"

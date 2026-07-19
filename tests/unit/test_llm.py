@@ -13,15 +13,15 @@ from taskify.config import (
     LLMSettings,
     LoggingSettings,
     Settings,
-    STTSettings,
     StorageSettings,
+    STTSettings,
 )
 from taskify.llm import MatrixQuadrant, OllamaBackend, TaskItem, get_llm_backend
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def llm_settings() -> LLMSettings:
@@ -64,6 +64,7 @@ def backend(llm_settings: LLMSettings) -> OllamaBackend:
 # MatrixQuadrant tests
 # ---------------------------------------------------------------------------
 
+
 class TestMatrixQuadrant:
     def test_valid_from_string(self) -> None:
         assert MatrixQuadrant.from_string("do_first") == MatrixQuadrant.DO_FIRST
@@ -83,6 +84,7 @@ class TestMatrixQuadrant:
 # ---------------------------------------------------------------------------
 # is_available
 # ---------------------------------------------------------------------------
+
 
 class TestOllamaAvailability:
     def test_available_when_200(self, backend: OllamaBackend) -> None:
@@ -109,6 +111,7 @@ class TestOllamaAvailability:
 # ---------------------------------------------------------------------------
 # extract_tasks
 # ---------------------------------------------------------------------------
+
 
 class TestExtractTasks:
     def _mock_generate(
@@ -215,10 +218,9 @@ class TestExtractTasks:
 # classify_matrix
 # ---------------------------------------------------------------------------
 
+
 class TestClassifyMatrix:
-    def _mock_post(
-        self, backend: OllamaBackend, quadrant_str: str
-    ) -> MagicMock:
+    def _mock_post(self, backend: OllamaBackend, quadrant_str: str) -> MagicMock:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.raise_for_status = MagicMock()
@@ -256,9 +258,14 @@ class TestClassifyMatrix:
 # Factory
 # ---------------------------------------------------------------------------
 
+
 class TestLLMFactory:
     def test_returns_ollama_backend(self, dummy_settings: Settings) -> None:
-        with patch.object(OllamaBackend, "is_available", new_callable=lambda: property(lambda self: True)):
+        with patch.object(
+            OllamaBackend,
+            "is_available",
+            new_callable=lambda: property(lambda self: True),
+        ):
             backend = get_llm_backend(dummy_settings)
         assert isinstance(backend, OllamaBackend)
 
@@ -269,9 +276,7 @@ class TestLLMFactory:
         backend = get_llm_backend(dummy_settings)
         assert isinstance(backend, NLPBackend)
 
-    def test_unknown_backend_raises_value_error(
-        self, dummy_settings: Settings
-    ) -> None:
+    def test_unknown_backend_raises_value_error(self, dummy_settings: Settings) -> None:
         dummy_settings.llm.backend = "gpt-99"
         with pytest.raises(ValueError, match="Unknown LLM backend"):
             get_llm_backend(dummy_settings)

@@ -1,6 +1,7 @@
 """Unit tests for the Taskify CLI."""
 
 from click.testing import CliRunner
+
 from taskify import __version__
 from taskify.cli.main import main
 
@@ -13,22 +14,27 @@ def test_version_flag() -> None:
     assert f"Taskify version {__version__}" in result.output
 
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 
 def test_default_invocation() -> None:
     """Test that running taskify with no subcommands starts the GUI and scheduler."""
     runner = CliRunner()
-    
+
     mock_db = MagicMock()
     mock_scheduler = MagicMock()
     mock_app = MagicMock()
-    
-    with patch("taskify.storage.database.DatabaseManager", return_value=mock_db), \
-         patch("taskify.pipeline.scheduler.ExtractionScheduler", return_value=mock_scheduler), \
-         patch("taskify.ui.main_window.MainWindow", return_value=mock_app):
-         
+
+    with (
+        patch("taskify.storage.database.DatabaseManager", return_value=mock_db),
+        patch(
+            "taskify.pipeline.scheduler.ExtractionScheduler",
+            return_value=mock_scheduler,
+        ),
+        patch("taskify.ui.main_window.MainWindow", return_value=mock_app),
+    ):
         result = runner.invoke(main)
-        
+
     assert result.exit_code == 0
     mock_scheduler.start.assert_called_once()
     mock_app.mainloop.assert_called_once()

@@ -47,6 +47,8 @@ _URGENT_KEYWORDS: frozenset[str] = frozenset(
         "before noon",
         "before tonight",
         "before end of day",
+        "quick",
+        "as soon as possible",
     }
 )
 
@@ -235,10 +237,11 @@ _DATE_PATTERNS: list[re.Pattern[str]] = [
 # Sentence / clause boundary splitter
 _SPLIT_PATTERN = re.compile(r"[.!?;,\n]+")
 
-# Imperative sentence starter pattern
+# Imperative sentence starter pattern (supporting "so i need to", etc.)
 _IMPERATIVE_PATTERN = re.compile(
     r"^\s*(?:please\s+|I need (?:to\s+|you to\s+)?|"
     r"(?:I\s+(?:have|need)\s+to\s+)|(?:we\s+(?:need|have)\s+to\s+)|"
+    r"(?:so\s+i\s+need\s+to\s+)|(?:so\s+we\s+need\s+to\s+)|"
     r"(?:can you\s+)|(?:could you\s+)|(?:make sure\s+(?:to\s+)?)|"
     r"(?:don\'t forget\s+(?:to\s+)?))?("
     + "|".join(re.escape(v) for v in sorted(_IMPERATIVE_VERBS, key=len, reverse=True))
@@ -268,6 +271,69 @@ def _extract_date(text: str) -> str:
         if m:
             return m.group(0).strip()
     return ""
+
+
+def _segment_transcript(transcript: str) -> list[str]:
+    """Segment a transcript on typical task boundary transition markers."""
+    base_clauses = [c.strip() for c in _SPLIT_PATTERN.split(transcript) if c.strip()]
+
+    # Boundary transition markers indicating a distinct task starts
+    boundary_pat = re.compile(
+        r"\b(i\s+need\s+to|i\s+have\s+to|i\s+should|we\s+need\s+to|we\s+have\s+to|please|make\s+sure\s+to|don\'t\s+forget\s+to|so\s+i\s+need\s+to|so\s+we\s+need\s+to)\b",
+        re.IGNORECASE,
+    )
+
+    final_clauses = []
+    for clause in base_clauses:
+        matches = list(boundary_pat.finditer(clause))
+        if not matches:
+            final_clauses.append(clause)
+            continue
+
+        last_idx = 0
+        for match in matches:
+            start = match.start()
+            if start > last_idx:
+                chunk = clause[last_idx:start].strip()
+                if chunk:
+                    final_clauses.append(chunk)
+            last_idx = start
+
+        if last_idx < len(clause):
+            chunk = clause[last_idx:].strip()
+            if chunk:
+                final_clauses.append(chunk)
+
+    return final_clauses
+
+
+def _clean_task_title(clause: str) -> tuple[str, str]:
+    """Strip introductory filler/marker words and separate long text into title & notes.
+
+    Returns:
+        tuple[str, str]: (cleaned_title, notes)
+    """
+    m = _IMPERATIVE_PATTERN.match(clause)
+    if m:
+        verb_start = m.start(1)
+        cleaned = clause[verb_start:].strip()
+    else:
+        cleaned = re.sub(
+            r"^\s*(?:so\s+|and\s+|then\s+|ok\s+|okay\s+|also\s+)+",
+            "",
+            clause,
+            flags=re.IGNORECASE,
+        )
+
+    words = cleaned.split()
+    if len(words) > 10:
+        title = " ".join(words[:10]) + "..."
+        notes = cleaned
+    else:
+        title = cleaned
+        notes = ""
+
+    return _title_case_sentence(title), notes
 
 
 def _classify_quadrant_heuristic(sentence: str) -> MatrixQuadrant:
@@ -315,8 +381,8 @@ def _title_case_sentence(text: str) -> str:
 def _extract_tasks_regex(transcript: str) -> list[TaskItem]:
     """Extract tasks using pure regex/keyword rules.
 
-    Splits transcript on sentence boundaries, then looks for clauses that
-    begin with an imperative verb or contain action signals.
+    Segments transcript based on transition markers, then looks for clauses
+    that match action signals.
 
     Args:
         transcript (str): Raw transcript text.
@@ -324,7 +390,7 @@ def _extract_tasks_regex(transcript: str) -> list[TaskItem]:
     Returns:
         list[TaskItem]: Extracted task candidates.
     """
-    clauses = [c.strip() for c in _SPLIT_PATTERN.split(transcript) if c.strip()]
+    clauses = _segment_transcript(transcript)
     tasks: list[TaskItem] = []
     seen_titles: set[str] = set()
 
@@ -343,7 +409,7 @@ def _extract_tasks_regex(transcript: str) -> list[TaskItem]:
             ):
                 continue
 
-        title = _title_case_sentence(clause)
+        title, notes = _clean_task_title(clause)
         if title.lower() in seen_titles:
             continue
         seen_titles.add(title.lower())
@@ -354,7 +420,7 @@ def _extract_tasks_regex(transcript: str) -> list[TaskItem]:
         tasks.append(
             TaskItem(
                 title=title,
-                notes="",
+                notes=notes,
                 due_date=due_date,
                 quadrant=quadrant,
                 source_transcript=transcript,
@@ -399,7 +465,9 @@ def _extract_tasks_spacy(transcript: str, nlp: Any) -> list[TaskItem]:
     Returns:
         list[TaskItem]: Extracted task items.
     """
-    doc = nlp(transcript)
+    clauses = _segment_transcript(transcript)
+    punctuated_transcript = ". ".join(clauses)
+    doc = nlp(punctuated_transcript)
     tasks: list[TaskItem] = []
     seen_titles: set[str] = set()
 
@@ -427,7 +495,7 @@ def _extract_tasks_spacy(transcript: str, nlp: Any) -> list[TaskItem]:
         ):
             continue
 
-        title = _title_case_sentence(sent_text)
+        title, notes = _clean_task_title(sent_text)
         if title.lower() in seen_titles:
             continue
         seen_titles.add(title.lower())
@@ -446,7 +514,7 @@ def _extract_tasks_spacy(transcript: str, nlp: Any) -> list[TaskItem]:
         tasks.append(
             TaskItem(
                 title=title,
-                notes="",
+                notes=notes,
                 due_date=due_date,
                 quadrant=quadrant,
                 source_transcript=transcript,

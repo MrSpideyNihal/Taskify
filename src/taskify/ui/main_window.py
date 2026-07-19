@@ -180,7 +180,7 @@ class TaskCard(ctk.CTkFrame):
         )
         # Actions
         menu.add_command(
-            label="✓ Mark Done",
+            label="Mark Done",
             command=lambda: self.on_action("complete", self.task_id),
         )
         menu.add_separator()
@@ -209,11 +209,11 @@ class TaskCard(ctk.CTkFrame):
             label="4. Eliminate",
             command=lambda: self.on_action("move_eliminate", self.task_id),
         )
-        menu.add_cascade(label="→ Move Quadrant", menu=move_menu)
+        menu.add_cascade(label="Move Quadrant", menu=move_menu)
         menu.add_separator()
 
         menu.add_command(
-            label="✗ Delete Task",
+            label="Delete Task",
             command=lambda: self.on_action("delete", self.task_id),
         )
 
@@ -375,7 +375,7 @@ class MainWindow(ctk.CTk):
         # ---- Recording button ----
         self.record_btn = ctk.CTkButton(
             panel,
-            text="▶  Start Recording",
+            text="Start Recording",
             font=ctk.CTkFont(size=13, weight="bold"),
             fg_color=COLOR_IDLE,
             hover_color="#22C55E",
@@ -457,7 +457,7 @@ class MainWindow(ctk.CTk):
 
         self.export_btn = ctk.CTkButton(
             actions_frame,
-            text="📤  Export",
+            text="Export",
             font=ctk.CTkFont(size=12, weight="bold"),
             fg_color="transparent",
             hover_color=CARD_HOVER,
@@ -472,7 +472,7 @@ class MainWindow(ctk.CTk):
 
         self.settings_btn = ctk.CTkButton(
             actions_frame,
-            text="⚙  Settings",
+            text="Settings",
             font=ctk.CTkFont(size=12, weight="bold"),
             fg_color="transparent",
             hover_color=CARD_HOVER,
@@ -546,12 +546,12 @@ class MainWindow(ctk.CTk):
 
         # Update UI
         self.record_btn.configure(
-            text="■  Stop Recording",
+            text="Stop Recording",
             fg_color=COLOR_RECORDING,
             hover_color="#CC2222",
             text_color="#FFFFFF",
         )
-        self.state_label.configure(text="● Recording", text_color=COLOR_RECORDING)
+        self.state_label.configure(text="Recording", text_color=COLOR_RECORDING)
         self.level_bar.configure(progress_color=COLOR_RECORDING)
 
         # Start background transcription thread
@@ -625,12 +625,12 @@ class MainWindow(ctk.CTk):
 
         # Reset UI
         self.record_btn.configure(
-            text="▶  Start Recording",
+            text="Start Recording",
             fg_color=COLOR_IDLE,
             hover_color="#22C55E",
             text_color="#000000",
         )
-        self.state_label.configure(text="● Idle", text_color=TEXT_SECONDARY)
+        self.state_label.configure(text="Idle", text_color=TEXT_SECONDARY)
         self.level_bar.configure(progress_color=COLOR_IDLE)
         self.level_bar.set(0)
         self._session_start = None
@@ -835,6 +835,16 @@ class MainWindow(ctk.CTk):
         )
         self.llm_label.pack(side="left", padx=16, pady=4)
 
+        # Center: Local Privacy Shield indicator
+        # (satisfies the requirement of prominent privacy statement in UI)
+        self.privacy_label = ctk.CTkLabel(
+            self.status_bar,
+            text="100% Local & Private (Zero Network Calls)",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color="#4ADE80",
+        )
+        self.privacy_label.pack(side="left", expand=True, pady=4)
+
         # Right: Last updated time
         self.time_label = ctk.CTkLabel(
             self.status_bar,
@@ -847,7 +857,7 @@ class MainWindow(ctk.CTk):
         # Center Right: Recording state
         self.state_label = ctk.CTkLabel(
             self.status_bar,
-            text="● Idle",
+            text="Idle",
             font=ctk.CTkFont(size=11, weight="bold"),
             text_color=TEXT_SECONDARY,
         )
@@ -931,6 +941,7 @@ class MainWindow(ctk.CTk):
     def open_export(self) -> None:
         """Construct and render the export configuration dialog."""
         from taskify.ui.export_dialog import ExportDialog
+
         ExportDialog(self, self._db)
 
     def apply_settings(self) -> None:

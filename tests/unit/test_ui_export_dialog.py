@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -56,7 +55,9 @@ def test_toggle_date_inputs(dialog: ExportDialog) -> None:
 
 
 @patch("tkinter.messagebox.showerror")
-def test_date_validations_missing_dates(mock_error: MagicMock, dialog: ExportDialog) -> None:
+def test_date_validations_missing_dates(
+    mock_error: MagicMock, dialog: ExportDialog
+) -> None:
     """Test validation errors if date filter enabled but fields empty."""
     dialog.date_filter_enabled.set(True)
     dialog.toggle_date_inputs()
@@ -65,11 +66,16 @@ def test_date_validations_missing_dates(mock_error: MagicMock, dialog: ExportDia
     dialog.end_date_entry.delete(0, "end")
 
     dialog.perform_export()
-    mock_error.assert_called_with("Validation Error", "Start and End dates are required when date filtering is active.")
+    mock_error.assert_called_with(
+        "Validation Error",
+        "Start and End dates are required when date filtering is active.",
+    )
 
 
 @patch("tkinter.messagebox.showerror")
-def test_date_validations_invalid_start_format(mock_error: MagicMock, dialog: ExportDialog) -> None:
+def test_date_validations_invalid_start_format(
+    mock_error: MagicMock, dialog: ExportDialog
+) -> None:
     """Test validation error for malformed start date format."""
     dialog.date_filter_enabled.set(True)
     dialog.toggle_date_inputs()
@@ -78,11 +84,15 @@ def test_date_validations_invalid_start_format(mock_error: MagicMock, dialog: Ex
     dialog.end_date_entry.insert(0, "2026-07-18")
 
     dialog.perform_export()
-    mock_error.assert_called_with("Validation Error", "Start date must match format: YYYY-MM-DD (e.g. 2026-07-01)")
+    mock_error.assert_called_with(
+        "Validation Error", "Start date must match format: YYYY-MM-DD (e.g. 2026-07-01)"
+    )
 
 
 @patch("tkinter.messagebox.showerror")
-def test_date_validations_invalid_end_format(mock_error: MagicMock, dialog: ExportDialog) -> None:
+def test_date_validations_invalid_end_format(
+    mock_error: MagicMock, dialog: ExportDialog
+) -> None:
     """Test validation error for malformed end date format."""
     dialog.date_filter_enabled.set(True)
     dialog.toggle_date_inputs()
@@ -92,11 +102,15 @@ def test_date_validations_invalid_end_format(mock_error: MagicMock, dialog: Expo
     dialog.end_date_entry.insert(0, "2026-07-invalid")
 
     dialog.perform_export()
-    mock_error.assert_called_with("Validation Error", "End date must match format: YYYY-MM-DD (e.g. 2026-07-18)")
+    mock_error.assert_called_with(
+        "Validation Error", "End date must match format: YYYY-MM-DD (e.g. 2026-07-18)"
+    )
 
 
 @patch("tkinter.messagebox.showerror")
-def test_date_validations_chronology(mock_error: MagicMock, dialog: ExportDialog) -> None:
+def test_date_validations_chronology(
+    mock_error: MagicMock, dialog: ExportDialog
+) -> None:
     """Test validation error if start date exceeds end date."""
     dialog.date_filter_enabled.set(True)
     dialog.toggle_date_inputs()
@@ -106,7 +120,9 @@ def test_date_validations_chronology(mock_error: MagicMock, dialog: ExportDialog
     dialog.end_date_entry.insert(0, "2026-07-01")
 
     dialog.perform_export()
-    mock_error.assert_called_with("Validation Error", "Start date cannot exceed End date.")
+    mock_error.assert_called_with(
+        "Validation Error", "Start date cannot exceed End date."
+    )
 
 
 @patch("tkinter.filedialog.asksaveasfilename")
@@ -135,7 +151,9 @@ def test_successful_export_markdown(
         start_date=None,
         end_date=None,
     )
-    mock_info.assert_called_with("Export Successful", "Successfully exported 5 tasks to:\nexport.md")
+    mock_info.assert_called_with(
+        "Export Successful", "Successfully exported 5 tasks to:\nexport.md"
+    )
 
 
 @patch("tkinter.filedialog.asksaveasfilename")
@@ -164,4 +182,6 @@ def test_successful_export_json(
         start_date=None,
         end_date=None,
     )
-    mock_info.assert_called_with("Export Successful", "Successfully exported 10 tasks to:\nexport.json")
+    mock_info.assert_called_with(
+        "Export Successful", "Successfully exported 10 tasks to:\nexport.json"
+    )

@@ -1,8 +1,5 @@
 """Unit tests for microphone audio capture and silence detection."""
 
-import collections
-import queue
-from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -14,8 +11,8 @@ from taskify.config import (
     LLMSettings,
     LoggingSettings,
     Settings,
-    STTSettings,
     StorageSettings,
+    STTSettings,
 )
 
 

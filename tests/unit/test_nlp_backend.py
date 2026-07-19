@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from taskify.llm.models import MatrixQuadrant, TaskItem
 from taskify.llm.nlp_backend import (
     NLPBackend,
@@ -14,10 +12,10 @@ from taskify.llm.nlp_backend import (
     _extract_tasks_regex,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper utilities
 # ---------------------------------------------------------------------------
+
 
 class TestExtractDate:
     def test_today(self) -> None:
@@ -74,15 +72,13 @@ class TestClassifyQuadrantHeuristic:
 
     def test_default_is_schedule(self) -> None:
         # No keywords → default
-        assert (
-            _classify_quadrant_heuristic("Buy oat milk")
-            == MatrixQuadrant.SCHEDULE
-        )
+        assert _classify_quadrant_heuristic("Buy oat milk") == MatrixQuadrant.SCHEDULE
 
 
 # ---------------------------------------------------------------------------
 # Rule-based extraction (no spaCy)
 # ---------------------------------------------------------------------------
+
 
 class TestExtractTasksRegex:
     def test_simple_imperative(self) -> None:
@@ -138,11 +134,39 @@ class TestExtractTasksRegex:
     def test_please_prefix_stripped(self) -> None:
         tasks = _extract_tasks_regex("Please send the document today.")
         assert len(tasks) >= 1
+        assert "please" not in tasks[0].title.lower()
+
+    def test_punctuation_less_segmentation(self) -> None:
+        transcript = (
+            "make a python script to detect square so i need to "
+            "pick up my lunch tiffin as quick as possible"
+        )
+        tasks = _extract_tasks_regex(transcript)
+        assert len(tasks) == 2
+        # Title 1
+        assert "make" in tasks[0].title.lower()
+        # Title 2
+        assert "pick" in tasks[1].title.lower()
+        # Quadrant 2 should be DO_FIRST due to "quick"
+        assert tasks[1].quadrant == MatrixQuadrant.DO_FIRST
+
+    def test_title_cleaning_and_notes(self) -> None:
+        transcript = (
+            "so i need to call the client and explain the new "
+            "project design details as soon as possible"
+        )
+        tasks = _extract_tasks_regex(transcript)
+        assert len(tasks) == 1
+        # Title should be truncated/cleaned
+        assert len(tasks[0].title.split()) <= 11
+        # Notes should preserve the entire clean command
+        assert "explain the new project design" in tasks[0].notes.lower()
 
 
 # ---------------------------------------------------------------------------
 # NLPBackend public interface
 # ---------------------------------------------------------------------------
+
 
 class TestNLPBackend:
     def test_always_available(self) -> None:

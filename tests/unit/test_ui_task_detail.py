@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from taskify.storage.database import DatabaseManager
-from taskify.storage.models import MatrixEntry, TaskRecord
-from taskify.ui.main_window import MainWindow, TaskCard
+from taskify.storage.models import TaskRecord
+from taskify.ui.main_window import TaskCard
 from taskify.ui.task_detail_panel import TaskDetailPanel
 
 
@@ -45,7 +44,9 @@ def detail_panel(mock_parent, db_manager) -> TaskDetailPanel:
     return panel
 
 
-def test_detail_panel_load(detail_panel: TaskDetailPanel, db_manager: DatabaseManager) -> None:
+def test_detail_panel_load(
+    detail_panel: TaskDetailPanel, db_manager: DatabaseManager
+) -> None:
     # 1. Insert a mock task
     task, matrix = db_manager.create_task(
         title="Test Task Title",
@@ -58,15 +59,18 @@ def test_detail_panel_load(detail_panel: TaskDetailPanel, db_manager: DatabaseMa
     # Create session
     db_manager.create_session("session1", 1000.0)
     from taskify.storage.models import TranscriptSegment
-    db_manager.insert_transcripts([
-        TranscriptSegment(
-            session_id="session1",
-            text="Need to finish test task title",
-            confidence=0.95,
-            start_time=1001.0,
-            end_time=1005.0
-        )
-    ])
+
+    db_manager.insert_transcripts(
+        [
+            TranscriptSegment(
+                session_id="session1",
+                text="Need to finish test task title",
+                confidence=0.95,
+                start_time=1001.0,
+                end_time=1005.0,
+            )
+        ]
+    )
 
     # Load task into panel
     detail_panel.load_task(task.id)
@@ -78,7 +82,9 @@ def test_detail_panel_load(detail_panel: TaskDetailPanel, db_manager: DatabaseMa
     assert detail_panel.status_var.get() == "pending"
 
 
-def test_detail_panel_auto_save_on_blur(detail_panel: TaskDetailPanel, db_manager: DatabaseManager) -> None:
+def test_detail_panel_auto_save_on_blur(
+    detail_panel: TaskDetailPanel, db_manager: DatabaseManager
+) -> None:
     # Insert task
     task, matrix = db_manager.create_task(
         title="Original Title",
@@ -117,7 +123,9 @@ def test_detail_panel_auto_save_on_blur(detail_panel: TaskDetailPanel, db_manage
     assert detail_panel.on_save.called
 
 
-def test_detail_panel_quadrant_override(detail_panel: TaskDetailPanel, db_manager: DatabaseManager) -> None:
+def test_detail_panel_quadrant_override(
+    detail_panel: TaskDetailPanel, db_manager: DatabaseManager
+) -> None:
     task, matrix = db_manager.create_task(
         title="Heuristic Task",
         notes="...",
@@ -140,7 +148,9 @@ def test_detail_panel_quadrant_override(detail_panel: TaskDetailPanel, db_manage
     assert detail_panel.on_save.called
 
 
-def test_detail_panel_close(detail_panel: TaskDetailPanel, db_manager: DatabaseManager) -> None:
+def test_detail_panel_close(
+    detail_panel: TaskDetailPanel, db_manager: DatabaseManager
+) -> None:
     task, matrix = db_manager.create_task(
         title="Closing Task",
         notes="",
