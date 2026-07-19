@@ -325,15 +325,60 @@ def _clean_task_title(clause: str) -> tuple[str, str]:
             flags=re.IGNORECASE,
         )
 
-    words = cleaned.split()
+    # Patterns to strip from the title to make it auto-summarized
+    priority_patterns = [
+        r"\bdo\s+first\b",
+        r"\bdelegate\b",
+        r"\beliminate\b",
+        r"\bschedule\b",
+        r"\bimportant\s+and\s+urgent\b",
+        r"\burgent\s+and\s+important\b",
+        r"\bimportant\s+but\s+not\s+urgent\b",
+        r"\burgent\s+but\s+not\s+important\b",
+        r"\bnot\s+important\s+or\s+urgent\b",
+        r"\bneither\s+urgent\s+nor\s+important\b",
+        r"\bnot\s+important\b",
+        r"\bnot\s+urgent\b",
+        r"\bas\s+soon\s+as\s+possible\b",
+        r"\basap\b",
+        r"\burgently\b",
+        r"\burgent\b",
+        r"\bimportant\b",
+        r"\bplease\b",
+        r"\bneed\s+to\b",
+        r"\bhave\s+to\b",
+        r"\bshould\b",
+        r"\bmust\b",
+        r"\bmake\s+sure\s+to\b",
+        r"\bdon't\s+forget\s+to\b",
+        r"\bso\s+i\s+need\s+to\b",
+        r"\bso\s+we\s+need\s+to\b",
+    ]
+
+    temp = cleaned
+    for pattern in priority_patterns:
+        temp = re.sub(pattern, "", temp, flags=re.IGNORECASE).strip()
+
+    # Clean double spaces
+    temp = re.sub(r"\s+", " ", temp)
+
+    # Clean up leading/trailing grammatical connectors left over from stripping
+    temp = re.sub(r"^\s*(?:and|an|a|the|or|but|to)\s+", "", temp, flags=re.IGNORECASE)
+    temp = re.sub(r"\s+(?:and|an|a|the|or|but|to)\s*$", "", temp, flags=re.IGNORECASE)
+
+    if not temp.strip():
+        temp = cleaned
+
+    words = temp.split()
     if len(words) > 10:
         title = " ".join(words[:10]) + "..."
         notes = cleaned
     else:
-        title = cleaned
+        title = temp
         notes = ""
 
     return _title_case_sentence(title), notes
+
 
 
 def _classify_quadrant_heuristic(sentence: str) -> MatrixQuadrant:

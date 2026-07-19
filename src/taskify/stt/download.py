@@ -12,7 +12,7 @@ from taskify.config import get_default_paths
 # Catalog of known model download configurations
 VOSK_MODEL_URLS = {
     "en-small": "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
-    "en-large": "https://alphacephei.com/vosk/models/vosk-model-en-us-0.22-lgroup.zip",
+    "en-large": "https://alphacephei.com/vosk/models/vosk-model-en-us-0.22-lgraph.zip",
     "de-small": "https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.zip",
     "fr-small": "https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip",
     "es-small": "https://alphacephei.com/vosk/models/vosk-model-small-es-0.3.zip",
