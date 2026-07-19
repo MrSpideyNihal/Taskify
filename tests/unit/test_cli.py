@@ -13,13 +13,25 @@ def test_version_flag() -> None:
     assert f"Taskify version {__version__}" in result.output
 
 
+from unittest.mock import patch, MagicMock
+
 def test_default_invocation() -> None:
-    """Test that running taskify with no subcommands prints the GUI launch status."""
+    """Test that running taskify with no subcommands starts the GUI and scheduler."""
     runner = CliRunner()
-    result = runner.invoke(main)
+    
+    mock_db = MagicMock()
+    mock_scheduler = MagicMock()
+    mock_app = MagicMock()
+    
+    with patch("taskify.storage.database.DatabaseManager", return_value=mock_db), \
+         patch("taskify.pipeline.scheduler.ExtractionScheduler", return_value=mock_scheduler), \
+         patch("taskify.ui.main_window.MainWindow", return_value=mock_app):
+         
+        result = runner.invoke(main)
+        
     assert result.exit_code == 0
-    assert "Starting Taskify GUI..." in result.output
-    assert "GUI placeholder launched successfully." in result.output
+    mock_scheduler.start.assert_called_once()
+    mock_app.mainloop.assert_called_once()
 
 
 def test_info_command() -> None:

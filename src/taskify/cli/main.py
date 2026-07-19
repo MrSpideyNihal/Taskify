@@ -25,10 +25,65 @@ def main(ctx: click.Context, version: bool) -> None:
         ctx.exit(0)
 
     if ctx.invoked_subcommand is None:
-        click.echo("Starting Taskify GUI...")
-        # GUI import and launch will go here in future issues.
-        # For now, print a success message and exit.
-        click.echo("GUI placeholder launched successfully.")
+        import logging
+
+        from taskify.config import get_default_paths, load_settings
+        from taskify.llm.factory import get_llm_backend
+        from taskify.pipeline.scheduler import EventBus, ExtractionScheduler
+        from taskify.storage.database import DatabaseManager
+        from taskify.ui.main_window import MainWindow
+
+        logger = logging.getLogger(__name__)
+        logger.info("Starting Taskify GUI...")
+
+        # 1. Load settings and locate database path
+        settings = load_settings()
+        _, data_dir = get_default_paths()
+        data_dir.mkdir(parents=True, exist_ok=True)
+        db_path = data_dir / "taskify.db"
+        db = DatabaseManager(db_path)
+
+        # 2. Setup Pub/Sub EventBus and NLP/LLM extraction backend
+        bus = EventBus()
+        llm_backend = get_llm_backend(settings)
+
+        # 3. Setup and start periodic extraction background scheduler
+        scheduler = ExtractionScheduler(db, llm_backend, settings, bus)
+        scheduler.start()
+        logger.info("Extraction background scheduler started.")
+
+        # 4. Construct and run Main custom tkinter window
+        try:
+            app = MainWindow(db, settings, bus)
+
+            def on_close() -> None:
+                logger.info("Shutdown signal received. Closing GUI and scheduler...")
+                try:
+                    scheduler.stop()
+                except Exception as e:
+                    logger.error("Error stopping scheduler: %s", e)
+                try:
+                    db.close()
+                except Exception as e:
+                    logger.error("Error closing database: %s", e)
+                try:
+                    app.destroy()
+                except Exception as e:
+                    logger.error("Error destroying tkinter app: %s", e)
+
+            app.protocol("WM_DELETE_WINDOW", on_close)
+            app.mainloop()
+        except Exception as exc:
+            logger.exception("Taskify GUI application encountered an error:")
+            try:
+                scheduler.stop()
+            except Exception:
+                pass
+            try:
+                db.close()
+            except Exception:
+                pass
+            raise click.ClickException(str(exc)) from exc
         ctx.exit(0)
 
 
@@ -36,6 +91,7 @@ def main(ctx: click.Context, version: bool) -> None:
 def info() -> None:
     """Show details about local system paths and configuration."""
     from taskify.config import get_default_paths
+
     config_dir, data_dir = get_default_paths()
     click.echo("Taskify System Information:")
     click.echo("Status: Initialized")
@@ -141,9 +197,7 @@ def config_show() -> None:
     default=None,
     help="Explicit model name override.",
 )
-def download_model(
-    engine: str, lang: str, size: str, model: str | None
-) -> None:
+def download_model(engine: str, lang: str, size: str, model: str | None) -> None:
     """Download local speech-to-text models."""
     model_id = model if model else f"{lang}-{size}".lower()
 
@@ -166,5 +220,3 @@ def download_model(
         except Exception as e:
             click.echo(f"Error downloading Whisper model: {e}", err=True)
             raise click.Abort() from e
-
-

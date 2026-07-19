@@ -9,10 +9,10 @@ from enum import Enum
 class MatrixQuadrant(str, Enum):
     """Eisenhower Matrix quadrant classification."""
 
-    DO_FIRST = "do_first"         # Urgent + Important
-    SCHEDULE = "schedule"         # Not Urgent + Important
-    DELEGATE = "delegate"         # Urgent + Not Important
-    ELIMINATE = "eliminate"       # Not Urgent + Not Important
+    DO_FIRST = "do_first"  # Urgent + Important
+    SCHEDULE = "schedule"  # Not Urgent + Important
+    DELEGATE = "delegate"  # Urgent + Not Important
+    ELIMINATE = "eliminate"  # Not Urgent + Not Important
 
     @classmethod
     def from_string(cls, value: str) -> MatrixQuadrant:
@@ -32,8 +32,7 @@ class MatrixQuadrant(str, Enum):
             if member.value == normalised:
                 return member
         raise ValueError(
-            f"Unknown quadrant '{value}'. "
-            f"Valid values: {[m.value for m in cls]}"
+            f"Unknown quadrant '{value}'. Valid values: {[m.value for m in cls]}"
         )
 
 

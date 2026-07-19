@@ -55,7 +55,7 @@ class WhisperEngine(STTEngine):
         except ImportError as e:
             raise ImportError(
                 "faster-whisper is not installed. "
-                "Install it using: pip install \"taskify[whisper]\""
+                'Install it using: pip install "taskify[whisper]"'
             ) from e
 
         # Ensure directory is created

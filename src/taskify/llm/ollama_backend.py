@@ -211,9 +211,7 @@ class OllamaBackend(LLMBackend):
     # Internal: parsing
     # ------------------------------------------------------------------
 
-    def _parse_tasks(
-        self, raw: str, source_transcript: str = ""
-    ) -> list[TaskItem]:
+    def _parse_tasks(self, raw: str, source_transcript: str = "") -> list[TaskItem]:
         """Parse a JSON array string into TaskItem objects.
 
         Invalid or malformed fields are replaced with safe defaults.
@@ -232,9 +230,7 @@ class OllamaBackend(LLMBackend):
             return []
 
         if not isinstance(data, list):
-            logger.warning(
-                "Expected JSON array from extraction, got %s.", type(data)
-            )
+            logger.warning("Expected JSON array from extraction, got %s.", type(data))
             return []
 
         tasks: list[TaskItem] = []

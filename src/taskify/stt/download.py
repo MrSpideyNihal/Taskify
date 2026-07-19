@@ -94,9 +94,7 @@ def download_vosk_model(model_name: str) -> Path:
             import shutil
 
             shutil.rmtree(target_model_path, ignore_errors=True)
-        raise RuntimeError(
-            f"Failed to install speech model '{model_name}': {e}"
-        ) from e
+        raise RuntimeError(f"Failed to install speech model '{model_name}': {e}") from e
 
 
 def download_whisper_model(model_size: str) -> Path:
@@ -123,9 +121,7 @@ def download_whisper_model(model_size: str) -> Path:
     download_root = data_dir / "models" / "whisper"
     download_root.mkdir(parents=True, exist_ok=True)
 
-    click.echo(
-        f"Downloading Whisper '{model_size}' model to: {download_root}..."
-    )
+    click.echo(f"Downloading Whisper '{model_size}' model to: {download_root}...")
     click.echo("This will pull quantized weights from Hugging Face.")
 
     try:
@@ -140,8 +136,7 @@ def download_whisper_model(model_size: str) -> Path:
         )
 
         target_model_path = (
-            download_root
-            / f"models--Systran--faster-whisper-{model_size}"
+            download_root / f"models--Systran--faster-whisper-{model_size}"
         )
         click.echo("Whisper model download and check completed successfully.")
         return target_model_path
@@ -149,4 +144,3 @@ def download_whisper_model(model_size: str) -> Path:
         raise RuntimeError(
             f"Failed to download Whisper model '{model_size}': {e}"
         ) from e
-

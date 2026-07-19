@@ -76,9 +76,7 @@ class DatabaseManager:
             applied_versions = {row["version"] for row in cursor.fetchall()}
 
             # Locate migration resources
-            migration_files = importlib.resources.files(
-                "taskify.storage.migrations"
-            )
+            migration_files = importlib.resources.files("taskify.storage.migrations")
 
             # Filter and parse files starting with 4 digits (e.g. 0001_xxx.sql)
             migrations_to_apply = []

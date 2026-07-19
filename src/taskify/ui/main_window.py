@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 import tkinter as tk
 import uuid
@@ -25,6 +26,8 @@ if TYPE_CHECKING:
     from taskify.pipeline.scheduler import EventBus
     from taskify.storage.database import DatabaseManager
     from taskify.storage.models import TaskRecord
+    from taskify.storage.transcript_writer import TranscriptWriter
+    from taskify.stt.base import STTEngine
     from taskify.ui.task_detail_panel import TaskDetailPanel
 
 logger = logging.getLogger(__name__)
@@ -263,13 +266,16 @@ class MainWindow(ctk.CTk):
         self.detail_panel: TaskDetailPanel | None = None
         self.bind("<Escape>", lambda e: self.close_task_detail())
 
-        # Recording state
+        # Recording and transcription state
         self._is_recording = False
         self._session_id: str | None = None
         self._session_start: float | None = None
         self._timer_after_id: str | None = None
         self._level_after_id: str | None = None
         self._audio_capture: AudioCapture | None = None
+        self._stt_engine: STTEngine | None = None
+        self._transcript_writer: TranscriptWriter | None = None
+        self._transcribe_thread: threading.Thread | None = None
 
         # Build control sidebar
         self._create_control_panel()
@@ -363,9 +369,7 @@ class MainWindow(ctk.CTk):
         subtitle.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="w")
 
         # Separator line
-        sep1 = ctk.CTkFrame(
-            panel, height=1, fg_color=BORDER_COLOR, corner_radius=0
-        )
+        sep1 = ctk.CTkFrame(panel, height=1, fg_color=BORDER_COLOR, corner_radius=0)
         sep1.grid(row=2, column=0, padx=12, pady=(0, 16), sticky="ew")
 
         # ---- Recording button ----
@@ -442,9 +446,7 @@ class MainWindow(ctk.CTk):
             wrap="word",
             state="disabled",
         )
-        self.transcript_box.grid(
-            row=8, column=0, padx=12, pady=(0, 8), sticky="nsew"
-        )
+        self.transcript_box.grid(row=8, column=0, padx=12, pady=(0, 8), sticky="nsew")
         panel.grid_rowconfigure(8, weight=1)
 
         # ---- Bottom Actions Frame ----
@@ -496,6 +498,9 @@ class MainWindow(ctk.CTk):
 
     def _start_recording(self) -> None:
         """Open AudioCapture stream and begin session timer."""
+        from taskify.storage.transcript_writer import TranscriptWriter
+        from taskify.stt import get_stt_engine
+
         session_id = str(uuid.uuid4())
         self._session_id = session_id
         self._session_start_epoch = time.time()
@@ -507,16 +512,34 @@ class MainWindow(ctk.CTk):
 
         # Set active session ID for formatters
         from taskify.logging_config import set_active_session_id
+
         set_active_session_id(session_id)
 
         try:
             if AudioCapture is None:
                 raise RuntimeError("AudioCapture unavailable (portaudio missing?)")
+
+            # Initialize STT engine
+            self._stt_engine = get_stt_engine(self._settings)
+            self._stt_engine.initialize()
+
+            # Initialize transcript writer
+            self._transcript_writer = TranscriptWriter(
+                db=self._db,
+                log_dir=self._settings.storage.log_dir,
+            )
+            self._transcript_writer.start()
+
+            # Start audio capture
             self._audio_capture = AudioCapture(self._settings)
             self._audio_capture.start()
         except Exception as exc:
-            logger.error("Failed to start audio capture: %s", exc)
+            logger.error("Failed to start audio capture or STT: %s", exc)
             self._audio_capture = None
+            self._stt_engine = None
+            if self._transcript_writer is not None:
+                self._transcript_writer.stop()
+                self._transcript_writer = None
 
         self._is_recording = True
         self._session_start = time.monotonic()
@@ -530,6 +553,15 @@ class MainWindow(ctk.CTk):
         )
         self.state_label.configure(text="● Recording", text_color=COLOR_RECORDING)
         self.level_bar.configure(progress_color=COLOR_RECORDING)
+
+        # Start background transcription thread
+        if self._audio_capture is not None and self._stt_engine is not None:
+            self._transcribe_thread = threading.Thread(
+                target=self._transcribe_loop,
+                name="LiveTranscription",
+                daemon=True,
+            )
+            self._transcribe_thread.start()
 
         # Begin tick loops
         self._tick_timer()
@@ -548,6 +580,7 @@ class MainWindow(ctk.CTk):
 
         # Reset active session ID in context formatter
         from taskify.logging_config import set_active_session_id
+
         set_active_session_id(None)
 
         if self._audio_capture is not None:
@@ -556,6 +589,24 @@ class MainWindow(ctk.CTk):
             except Exception as exc:
                 logger.error("Error stopping audio capture: %s", exc)
             self._audio_capture = None
+
+        # Join the transcription thread to make sure it finishes flushing
+        if self._transcribe_thread is not None:
+            try:
+                self._transcribe_thread.join(timeout=2.0)
+            except Exception as exc:
+                logger.error("Error joining transcription thread: %s", exc)
+            self._transcribe_thread = None
+
+        # Stop transcript writer
+        if self._transcript_writer is not None:
+            try:
+                self._transcript_writer.stop()
+            except Exception as exc:
+                logger.error("Error stopping transcript writer: %s", exc)
+            self._transcript_writer = None
+
+        self._stt_engine = None
 
         # Cancel pending after-callbacks
         if self._timer_after_id is not None:
@@ -584,6 +635,63 @@ class MainWindow(ctk.CTk):
         self.level_bar.set(0)
         self._session_start = None
         self.timer_label.configure(text="00:00")
+
+    def _transcribe_loop(self) -> None:
+        """Background transcription loop.
+
+        Pulls audio chunks from the queue and writes transcripts.
+        """
+        from taskify.storage.models import TranscriptSegment
+
+        session_id = self._session_id
+        if not session_id or self._stt_engine is None or self._audio_capture is None:
+            return
+
+        accumulated_text = []
+        start_time = 0.0
+
+        while self._is_recording:
+            chunk = self._audio_capture.get_chunk(timeout=0.1)
+            if chunk is not None:
+                try:
+                    text = self._stt_engine.transcribe_chunk(chunk)
+                    if text:
+                        text_str = text.strip()
+                        if text_str:
+                            accumulated_text.append(text_str)
+                            # Update live transcript UI thread-safely
+                            self.after(0, lambda t=text_str: self.append_transcript(t))
+                except Exception as exc:
+                    logger.error("Error transcribing chunk: %s", exc)
+
+        # Flush remaining buffer in STT engine
+        try:
+            final_text = self._stt_engine.flush()
+            if final_text:
+                final_text_str = final_text.strip()
+                if final_text_str:
+                    accumulated_text.append(final_text_str)
+                    self.after(0, lambda t=final_text_str: self.append_transcript(t))
+        except Exception as exc:
+            logger.error("Error flushing STT engine: %s", exc)
+
+        # Persist full transcribed text as a segment in the database session
+        full_transcript = " ".join(accumulated_text).strip()
+        if full_transcript and self._transcript_writer is not None:
+            # End time is session elapsed time
+            elapsed = time.monotonic() - (self._session_start or time.monotonic())
+            segment = TranscriptSegment(
+                session_id=session_id,
+                text=full_transcript,
+                confidence=0.95,
+                start_time=start_time,
+                end_time=max(elapsed, start_time + 1.0),
+            )
+            try:
+                self._transcript_writer.write(segment)
+                self._transcript_writer.flush()
+            except Exception as exc:
+                logger.error("Error saving transcript segment: %s", exc)
 
     def _tick_timer(self) -> None:
         """Update session MM:SS timer every second while recording."""
@@ -817,6 +925,7 @@ class MainWindow(ctk.CTk):
     def open_settings(self) -> None:
         """Construct and render the settings dialog."""
         from taskify.ui.settings_dialog import SettingsDialog
+
         SettingsDialog(self, self._settings)
 
     def open_export(self) -> None:
@@ -858,9 +967,7 @@ class MainWindow(ctk.CTk):
             )
 
         # Show panel in column 2, matching height of matrix frame
-        self.detail_panel.grid(
-            row=0, column=2, padx=(0, 16), pady=16, sticky="nsew"
-        )
+        self.detail_panel.grid(row=0, column=2, padx=(0, 16), pady=16, sticky="nsew")
         self.detail_panel.load_task(task_id)
 
     def close_task_detail(self) -> None:

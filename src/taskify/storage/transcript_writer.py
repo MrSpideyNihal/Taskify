@@ -175,8 +175,7 @@ class TranscriptWriter:
 
             elapsed = time.monotonic() - last_flush
             should_flush = (
-                len(pending) >= self._batch_size
-                or elapsed >= self._flush_interval_s
+                len(pending) >= self._batch_size or elapsed >= self._flush_interval_s
             )
             if should_flush:
                 self._persist_batch(pending)
@@ -283,6 +282,7 @@ class TranscriptWriter:
 
     def _register_signal_handlers(self) -> None:
         """Register SIGTERM and SIGINT handlers to flush before process exit."""
+
         def _handler(signum: int, frame: object) -> None:
             self.stop()
 
