@@ -32,8 +32,7 @@ def get_llm_backend(settings: Settings) -> LLMBackend:
         backend = OllamaBackend(settings.llm)
         if not backend.is_available:
             logger.warning(
-                "Ollama is not reachable at '%s'. "
-                "Falling back to NLP backend.",
+                "Ollama is not reachable at '%s'. Falling back to NLP backend.",
                 settings.llm.ollama_host,
             )
             return NLPBackend()
@@ -43,6 +42,5 @@ def get_llm_backend(settings: Settings) -> LLMBackend:
         return NLPBackend()
 
     raise ValueError(
-        f"Unknown LLM backend '{settings.llm.backend}'. "
-        "Valid choices: 'ollama', 'nlp'."
+        f"Unknown LLM backend '{settings.llm.backend}'. Valid choices: 'ollama', 'nlp'."
     )

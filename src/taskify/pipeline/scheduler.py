@@ -106,6 +106,7 @@ class EventBus:
 # ExtractionScheduler
 # ---------------------------------------------------------------------------
 
+
 class ExtractionScheduler:
     """Periodically extracts tasks from unprocessed transcript segments.
 
@@ -157,9 +158,7 @@ class ExtractionScheduler:
             return
         self._started = True
         self._stop_event.clear()
-        logger.info(
-            "ExtractionScheduler started (interval=%.0fs).", self._interval_s
-        )
+        logger.info("ExtractionScheduler started (interval=%.0fs).", self._interval_s)
         self._schedule_next()
 
     def stop(self) -> None:
@@ -227,9 +226,7 @@ class ExtractionScheduler:
             logger.debug("ExtractionScheduler: no unprocessed segments found.")
             return
 
-        logger.info(
-            "ExtractionScheduler: processing %d segment(s).", len(segments)
-        )
+        logger.info("ExtractionScheduler: processing %d segment(s).", len(segments))
 
         extracted_count = 0
         processed_ids: list[int] = []

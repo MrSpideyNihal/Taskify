@@ -25,10 +25,27 @@ from taskify.llm.models import MatrixQuadrant, TaskItem
 # Signals that push a task toward "Urgent"
 _URGENT_KEYWORDS: frozenset[str] = frozenset(
     {
-        "urgent", "urgently", "asap", "immediately", "right now", "today",
-        "tonight", "this morning", "this afternoon", "critical", "emergency",
-        "deadline", "due today", "by end of day", "eod", "now", "quickly",
-        "straight away", "at once", "before noon", "before tonight",
+        "urgent",
+        "urgently",
+        "asap",
+        "immediately",
+        "right now",
+        "today",
+        "tonight",
+        "this morning",
+        "this afternoon",
+        "critical",
+        "emergency",
+        "deadline",
+        "due today",
+        "by end of day",
+        "eod",
+        "now",
+        "quickly",
+        "straight away",
+        "at once",
+        "before noon",
+        "before tonight",
         "before end of day",
     }
 )
@@ -36,45 +53,151 @@ _URGENT_KEYWORDS: frozenset[str] = frozenset(
 # Signals that push a task toward "Important"
 _IMPORTANT_KEYWORDS: frozenset[str] = frozenset(
     {
-        "important", "crucial", "essential", "must", "need to", "have to",
-        "priority", "key", "critical", "significant", "vital", "necessary",
-        "strategic", "milestone", "goal", "objective", "project",
+        "important",
+        "crucial",
+        "essential",
+        "must",
+        "need to",
+        "have to",
+        "priority",
+        "key",
+        "critical",
+        "significant",
+        "vital",
+        "necessary",
+        "strategic",
+        "milestone",
+        "goal",
+        "objective",
+        "project",
     }
 )
 
 # Signals that suppress importance ("not important")
 _LOW_IMPORTANCE_KEYWORDS: frozenset[str] = frozenset(
     {
-        "someday", "maybe", "eventually", "whenever", "nice to have",
-        "low priority", "not important", "minor", "trivial", "later",
-        "at some point", "if possible", "could", "might",
+        "someday",
+        "maybe",
+        "eventually",
+        "whenever",
+        "nice to have",
+        "low priority",
+        "not important",
+        "minor",
+        "trivial",
+        "later",
+        "at some point",
+        "if possible",
+        "could",
+        "might",
     }
 )
 
 # Delegation signals
 _DELEGATE_KEYWORDS: frozenset[str] = frozenset(
     {
-        "ask", "remind", "tell", "have someone", "delegate", "assign",
-        "request", "get someone", "let someone", "make sure someone",
-        "have them", "have him", "have her",
+        "ask",
+        "remind",
+        "tell",
+        "have someone",
+        "delegate",
+        "assign",
+        "request",
+        "get someone",
+        "let someone",
+        "make sure someone",
+        "have them",
+        "have him",
+        "have her",
     }
 )
 
 # Common imperative verbs to seed extraction
 _IMPERATIVE_VERBS: frozenset[str] = frozenset(
     {
-        "buy", "call", "check", "clean", "complete", "confirm", "contact",
-        "create", "do", "draft", "email", "file", "find", "finish", "fix",
-        "follow", "get", "go", "handle", "install", "make", "meet", "order",
-        "pay", "pick", "plan", "prepare", "print", "purchase", "read",
-        "register", "remind", "reply", "research", "review", "schedule",
-        "send", "set", "share", "sign", "start", "submit", "talk",
-        "update", "upload", "write", "book", "cancel", "change", "close",
-        "collect", "connect", "delete", "design", "download", "drop",
-        "edit", "enter", "fill", "give", "help", "join", "launch",
-        "move", "notify", "open", "provide", "push", "record",
-        "remove", "report", "request", "return", "run", "save", "ship",
-        "show", "sort", "speak", "take", "test", "track", "transfer",
+        "buy",
+        "call",
+        "check",
+        "clean",
+        "complete",
+        "confirm",
+        "contact",
+        "create",
+        "do",
+        "draft",
+        "email",
+        "file",
+        "find",
+        "finish",
+        "fix",
+        "follow",
+        "get",
+        "go",
+        "handle",
+        "install",
+        "make",
+        "meet",
+        "order",
+        "pay",
+        "pick",
+        "plan",
+        "prepare",
+        "print",
+        "purchase",
+        "read",
+        "register",
+        "remind",
+        "reply",
+        "research",
+        "review",
+        "schedule",
+        "send",
+        "set",
+        "share",
+        "sign",
+        "start",
+        "submit",
+        "talk",
+        "update",
+        "upload",
+        "write",
+        "book",
+        "cancel",
+        "change",
+        "close",
+        "collect",
+        "connect",
+        "delete",
+        "design",
+        "download",
+        "drop",
+        "edit",
+        "enter",
+        "fill",
+        "give",
+        "help",
+        "join",
+        "launch",
+        "move",
+        "notify",
+        "open",
+        "provide",
+        "push",
+        "record",
+        "remove",
+        "report",
+        "request",
+        "return",
+        "run",
+        "save",
+        "ship",
+        "show",
+        "sort",
+        "speak",
+        "take",
+        "test",
+        "track",
+        "transfer",
         "visit",
     }
 )
@@ -127,6 +250,7 @@ _IMPERATIVE_PATTERN = re.compile(
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
+
 
 def _contains_any(text: str, keywords: frozenset[str]) -> bool:
     """Return True if *text* contains any keyword (word-boundary aware)."""
@@ -187,6 +311,7 @@ def _title_case_sentence(text: str) -> str:
 # Rule-based extraction (no spaCy)
 # ---------------------------------------------------------------------------
 
+
 def _extract_tasks_regex(transcript: str) -> list[TaskItem]:
     """Extract tasks using pure regex/keyword rules.
 
@@ -244,6 +369,7 @@ def _extract_tasks_regex(transcript: str) -> list[TaskItem]:
 # spaCy-enhanced extraction (optional)
 # ---------------------------------------------------------------------------
 
+
 def _try_load_spacy() -> Any:
     """Attempt to import and load the spaCy English model.
 
@@ -291,8 +417,7 @@ def _extract_tasks_spacy(transcript: str, nlp: Any) -> list[TaskItem]:
 
         # Accept sentence if root verb is an imperative verb, OR rule matches
         is_imperative = (
-            root_token is not None
-            and root_token.lemma_.lower() in _IMPERATIVE_VERBS
+            root_token is not None and root_token.lemma_.lower() in _IMPERATIVE_VERBS
         ) or bool(_IMPERATIVE_PATTERN.match(sent_text))
 
         if not is_imperative and not re.search(
@@ -335,6 +460,7 @@ def _extract_tasks_spacy(transcript: str, nlp: Any) -> list[TaskItem]:
 # ---------------------------------------------------------------------------
 # NLPBackend
 # ---------------------------------------------------------------------------
+
 
 class NLPBackend(LLMBackend):
     """Rule-based task extraction backend with optional spaCy enhancement.

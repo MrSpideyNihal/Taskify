@@ -198,9 +198,7 @@ def get_default_paths() -> tuple[Path, Path]:
         xdg_config = os.environ.get("XDG_CONFIG_HOME")
         xdg_data = os.environ.get("XDG_DATA_HOME")
         config_dir = (
-            Path(xdg_config) / "taskify"
-            if xdg_config
-            else home / ".config" / "taskify"
+            Path(xdg_config) / "taskify" if xdg_config else home / ".config" / "taskify"
         )
         data_dir = (
             Path(xdg_data) / "taskify"
@@ -280,9 +278,7 @@ def load_settings(user_config_path: Path | None = None) -> Settings:
         audio=AudioSettings.from_dict(merged.get("audio", {})),
         stt=STTSettings.from_dict(merged.get("stt", {})),
         llm=LLMSettings.from_dict(merged.get("llm", {})),
-        storage=StorageSettings.from_dict(
-            merged.get("storage", {}), default_data_dir
-        ),
+        storage=StorageSettings.from_dict(merged.get("storage", {}), default_data_dir),
         logging=LoggingSettings.from_dict(merged.get("logging", {})),
         config_path=target_config if target_config.exists() else None,
     )
@@ -324,23 +320,15 @@ def save_settings(settings: Settings) -> None:
         settings (Settings): Active application settings.
     """
     config_dir, _ = get_default_paths()
-    path = (
-        settings.config_path
-        if settings.config_path
-        else config_dir / "config.toml"
-    )
+    path = settings.config_path if settings.config_path else config_dir / "config.toml"
 
     # Ensure parent directories exist
     path.parent.mkdir(parents=True, exist_ok=True)
 
     # Ensure paths are saved nicely as strings or posix formats
     s_storage = settings.storage
-    data_dir_str = (
-        s_storage.data_dir.as_posix() if s_storage.data_dir else ""
-    )
-    log_dir_str = (
-        s_storage.log_dir.as_posix() if s_storage.log_dir else ""
-    )
+    data_dir_str = s_storage.data_dir.as_posix() if s_storage.data_dir else ""
+    log_dir_str = s_storage.log_dir.as_posix() if s_storage.log_dir else ""
 
     # Generate custom TOML content
     lines = [
@@ -370,7 +358,7 @@ def save_settings(settings: Settings) -> None:
         "[logging]",
         f'level = "{settings.logging.level}"',
         f"debug_llm = {str(settings.logging.debug_llm).lower()}",
-        ""
+        "",
     ]
 
     path.write_text("\n".join(lines), encoding="utf-8")

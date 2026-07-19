@@ -466,8 +466,18 @@ class SettingsDialog(ctk.CTkToplevel):
                     ) from ie
 
                 valid_whisper_models = {
-                    "tiny", "tiny.en", "base", "base.en", "small", "small.en",
-                    "medium", "medium.en", "large-v1", "large-v2", "large-v3", "large"
+                    "tiny",
+                    "tiny.en",
+                    "base",
+                    "base.en",
+                    "small",
+                    "small.en",
+                    "medium",
+                    "medium.en",
+                    "large-v1",
+                    "large-v2",
+                    "large-v3",
+                    "large",
                 }
                 w_val = stt_settings.whisper_model
                 if w_val not in valid_whisper_models:
@@ -487,6 +497,7 @@ class SettingsDialog(ctk.CTkToplevel):
 
                 # Check if selected Vosk model downloaded locally
                 from taskify.stt.vosk_engine import VoskEngine
+
                 temp_s = Settings(
                     audio=audio_settings,
                     stt=stt_settings,
@@ -509,9 +520,7 @@ class SettingsDialog(ctk.CTkToplevel):
             try:
                 interval = int(self.interval_var.get())
             except ValueError as ve:
-                raise ValueError(
-                    "Extraction interval must be an integer."
-                ) from ve
+                raise ValueError("Extraction interval must be an integer.") from ve
 
             llm_settings = LLMSettings(
                 backend=self.llm_backend_var.get(),
