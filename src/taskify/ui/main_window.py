@@ -678,7 +678,7 @@ class MainWindow(ctk.CTk):
                                     self._transcript_writer.write(segment)
                                     self._transcript_writer.flush()
                                     # Trigger extraction so tasks appear in real-time
-                                    self.bus.emit("trigger_extraction")
+                                    self._bus.emit("trigger_extraction")
                                 except Exception as exc:
                                     logger.error(
                                         "Error saving live transcript segment: %s",
@@ -714,7 +714,7 @@ class MainWindow(ctk.CTk):
                 self._transcript_writer.write(segment)
                 self._transcript_writer.flush()
                 # Trigger one final extraction on the EventBus
-                self.bus.emit("trigger_extraction")
+                self._bus.emit("trigger_extraction")
             except Exception as exc:
                 logger.error("Error saving final transcript segment: %s", exc)
 
