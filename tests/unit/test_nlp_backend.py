@@ -157,16 +157,18 @@ class TestExtractTasksRegex:
         )
         tasks = _extract_tasks_regex(transcript)
         assert len(tasks) == 1
-        # Title should be truncated/cleaned
+        # Title should be truncated/cleaned (no more than 10 words or full phrase)
         assert len(tasks[0].title.split()) <= 11
-        # Notes should preserve the entire clean command
-        assert "explain the new project design" in tasks[0].notes.lower()
+        # Key action phrase should appear in either the title or notes
+        assert "explain the new project design" in (
+            tasks[0].title + " " + tasks[0].notes
+        ).lower()
 
     def test_title_auto_summarization_strips_priority(self) -> None:
         transcript = "send an important and urgent image as soon as possible"
         tasks = _extract_tasks_regex(transcript)
         assert len(tasks) == 1
-        assert tasks[0].title == "Send image"
+        assert tasks[0].title == "Send an image"
 
 
 

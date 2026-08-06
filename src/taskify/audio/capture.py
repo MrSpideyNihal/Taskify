@@ -53,6 +53,10 @@ class AudioCapture:
         self._is_recording = False
         self._latest_rms = 0.0
 
+        # Rolling noise floor estimate (updated during SILENT periods)
+        self._noise_floor = 0.002
+        self._noise_floor_alpha = 0.05  # EMA smoothing factor
+
     @property
     def is_recording(self) -> bool:
         """Check if audio input stream is active.
@@ -70,6 +74,18 @@ class AudioCapture:
             float: RMS value.
         """
         return self._latest_rms
+
+    @property
+    def noise_floor(self) -> float:
+        """Get the estimated background noise floor RMS level.
+
+        Updated continuously from silent-period measurements using an
+        exponential moving average. Useful for adaptive noise gating.
+
+        Returns:
+            float: Estimated noise floor RMS.
+        """
+        return self._noise_floor
 
     @classmethod
     def get_available_devices(cls) -> list[dict[str, Any]]:
@@ -164,6 +180,10 @@ class AudioCapture:
                     self._silence_threshold,
                 )
                 self._preroll_buffer.append(audio_data)
+
+                # Update rolling noise floor estimate from silent periods
+                alpha = self._noise_floor_alpha
+                self._noise_floor = alpha * rms + (1.0 - alpha) * self._noise_floor
         else:  # ACTIVE state
             if rms < self._silence_threshold:
                 self._silence_counter += 1

@@ -98,8 +98,8 @@ def test_whisper_transcription_and_flush(
     assert engine.is_initialized()
 
     # transcribe_chunk should return None and accumulate
-    chunk_1 = np.ones(3200, dtype=np.float32) * 0.1
-    chunk_2 = np.ones(3200, dtype=np.float32) * 0.2
+    chunk_1 = np.ones(8000, dtype=np.float32) * 0.1
+    chunk_2 = np.ones(8000, dtype=np.float32) * 0.2
 
     assert engine.transcribe_chunk(chunk_1) is None
     assert engine.transcribe_chunk(chunk_2) is None
@@ -110,12 +110,13 @@ def test_whisper_transcription_and_flush(
     assert final_text == "Write a quick task for Antigravity."
     assert len(engine._audio_buffer) == 0
 
-    # Verify model.transcribe was called with concatenated audio (6400 frames)
+    # Verify model.transcribe was called with concatenated audio (16000 frames)
     mock_model_instance = mock_faster_whisper_module.WhisperModel.return_value
     mock_model_instance.transcribe.assert_called_once()
     args, _ = mock_model_instance.transcribe.call_args
     assert isinstance(args[0], np.ndarray)
-    assert len(args[0]) == 6400
+    assert len(args[0]) == 16000
+
 
 
 def test_download_whisper_model_invalid_size() -> None:

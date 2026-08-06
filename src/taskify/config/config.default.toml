@@ -1,13 +1,13 @@
 [audio]
 device = "default"
 sample_rate = 16000
-chunk_duration_ms = 200
+chunk_duration_ms = 400
 silence_threshold = 0.01
 silence_duration_s = 1.5
 
 [stt]
 engine = "vosk"
-vosk_model = "en-small"
+vosk_model = "en-large"
 whisper_model = "base"
 language = "en"
 

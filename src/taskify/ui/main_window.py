@@ -639,14 +639,18 @@ class MainWindow(ctk.CTk):
     def _transcribe_loop(self) -> None:
         """Background transcription loop.
 
-        Pulls audio chunks from the queue and writes transcripts.
+        Pulls audio chunks from the queue, applies audio preprocessing
+        (high-pass filter, noise gate, normalization) for cleaner input,
+        then writes transcripts.
         """
+        from taskify.audio.preprocessing import preprocess
         from taskify.storage.models import TranscriptSegment
 
         session_id = self._session_id
         if not session_id or self._stt_engine is None or self._audio_capture is None:
             return
 
+        sample_rate = self._settings.audio.sample_rate
         accumulated_text = []
         start_time = 0.0
 
@@ -654,7 +658,14 @@ class MainWindow(ctk.CTk):
             chunk = self._audio_capture.get_chunk(timeout=0.1)
             if chunk is not None:
                 try:
-                    text = self._stt_engine.transcribe_chunk(chunk)
+                    # Apply audio preprocessing to clean the signal
+                    # before feeding it to the STT engine
+                    clean_chunk = preprocess(
+                        chunk,
+                        sample_rate,
+                        gate_threshold=self._audio_capture.noise_floor * 1.5,
+                    )
+                    text = self._stt_engine.transcribe_chunk(clean_chunk)
                     if text:
                         text_str = text.strip()
                         if text_str:
